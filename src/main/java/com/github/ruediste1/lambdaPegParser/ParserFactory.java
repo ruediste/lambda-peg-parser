@@ -6,10 +6,8 @@ import java.io.PrintWriter;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 
 import net.sf.cglib.proxy.Enhancer;
 import net.sf.cglib.proxy.MethodInterceptor;
@@ -17,10 +15,7 @@ import net.sf.cglib.proxy.MethodProxy;
 
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
-import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.Type;
-import org.objectweb.asm.commons.Remapper;
 import org.objectweb.asm.commons.RemappingMethodAdapter;
 import org.objectweb.asm.commons.SimpleRemapper;
 import org.objectweb.asm.tree.ClassNode;
@@ -32,40 +27,6 @@ import org.objectweb.asm.util.TraceClassVisitor;
 public class ParserFactory {
 
 	public static class WeavedClassLoader extends ClassLoader {
-
-		private final class CustomRemapper extends
-				RemappingMethodAdapter {
-			private CustomRemapper(int access, String desc,
-					MethodVisitor mv, Remapper remapper) {
-				super(access, desc, mv, remapper);
-			}
-
-			private boolean doMap(String owner, String name) {
-				return !("com/github/ruediste1/lambdaPegParser/PrototypeParser"
-						.equals(owner) && "sampleRule".equals(name));
-			}
-
-			@SuppressWarnings("deprecation")
-			@Override
-			public void visitMethodInsn(int opcode, String owner,
-					String name, String desc) {
-				if (doMap(owner, name))
-					super.visitMethodInsn(opcode, owner, name, desc);
-				else
-					mv.visitMethodInsn(opcode, owner, name, desc);
-			}
-
-			@Override
-			public void visitMethodInsn(int opcode, String owner,
-					String name, String desc, boolean itf) {
-				if (doMap(owner, name))
-					super.visitMethodInsn(opcode, owner, name,
-							desc, itf);
-				else
-					mv.visitMethodInsn(opcode, owner, name, desc,
-							itf);
-			}
-		}
 
 		private Class<?> cls;
 
@@ -133,7 +94,6 @@ public class ParserFactory {
 
 					MethodNode newNode;
 					{
-						@SuppressWarnings("unchecked")
 						String[] exceptions = ((List<String>) node.exceptions)
 								.toArray(new String[] {});
 
@@ -141,22 +101,17 @@ public class ParserFactory {
 								node.desc, node.signature, exceptions);
 					}
 
-					MethodCallInliner inliner = new MethodCallInliner(
-							node.access, node.desc, newNode, node);
+					RemappingMethodAdapter remapper = new RemappingMethodAdapter(
+							node.access, node.desc, newNode,
+							new SimpleRemapper(PrototypeParser.class.getName()
+									.replace('.', '/'),
+									parserClassName.replace('.', '/')));
 
-					Map<String, String> mapping = new HashMap<>();
-					mapping.put(
-							"com/github/ruediste1/lambdaPegParser/PrototypeParser$SampleRuleResult",
-							Type.getMethodType(node.desc).getReturnType()
-									.getInternalName());
-					mapping.put(
-							PrototypeParser.class.getName().replace('.', '/'),
-							parserClassName.replace('.', '/'));
-					RemappingMethodAdapter remapper = new CustomRemapper(node.access,
-							node.desc, inliner, new SimpleRemapper(mapping));
+					MethodCallInliner inliner = new MethodCallInliner(
+							remapper, node);
 
 					PrototypeCustomizer prototypeCustomizer = new PrototypeCustomizer(
-							remapper, node, i);
+							inliner, node, i);
 
 					prototype.accept(prototypeCustomizer);
 

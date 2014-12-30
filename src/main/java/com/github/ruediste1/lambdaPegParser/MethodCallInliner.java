@@ -6,10 +6,11 @@ import java.util.List;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.commons.LocalVariablesSorter;
+import org.objectweb.asm.Type;
+import org.objectweb.asm.commons.GeneratorAdapter;
 import org.objectweb.asm.tree.MethodNode;
 
-public class MethodCallInliner extends LocalVariablesSorter {
+public class MethodCallInliner extends GeneratorAdapter {
 	public class CatchBlock {
 
 		private Label start;
@@ -30,9 +31,9 @@ public class MethodCallInliner extends LocalVariablesSorter {
 	private List<CatchBlock> blocks = new ArrayList<CatchBlock>();
 	private boolean inlining;
 
-	public MethodCallInliner(int access, String desc, MethodVisitor mv,
-			MethodNode toBeInlined) {
-		super(Opcodes.ASM5, access, desc, mv);
+	public MethodCallInliner(MethodVisitor mv, MethodNode toBeInlined) {
+		super(Opcodes.ASM5, mv, toBeInlined.access, toBeInlined.name,
+				toBeInlined.desc);
 		this.toBeInlined = toBeInlined;
 	}
 
@@ -52,7 +53,14 @@ public class MethodCallInliner extends LocalVariablesSorter {
 		toBeInlined.accept(new InliningAdapter(this, end,
 				opcode == Opcodes.INVOKESTATIC ? Opcodes.ACC_STATIC : 0, desc));
 		inlining = false;
+
+		// visit the end label
 		super.visitLabel(end);
+
+		// box the return value if necessary
+		Type returnType = Type.getMethodType(toBeInlined.desc).getReturnType();
+		valueOf(returnType);
+
 	}
 
 	private boolean shouldBeInlined(String owner, String name, String desc) {

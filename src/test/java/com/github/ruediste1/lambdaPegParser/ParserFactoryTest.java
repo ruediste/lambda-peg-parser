@@ -1,6 +1,5 @@
 package com.github.ruediste1.lambdaPegParser;
 
-
 import static java.util.stream.Collectors.joining;
 import static org.junit.Assert.assertEquals;
 
@@ -177,8 +176,19 @@ public class ParserFactoryTest {
 			super(ctx);
 		}
 
+		String input() {
+			whiteSpace();
+			return term();
+		}
+
 		String term() {
-			return FirstOf(() -> term() + Chars("b"), () -> Chars("b"));
+			String result = FirstOf(() -> term() + Chars("b"), () -> Chars("b"));
+			whiteSpace();
+			return result;
+		}
+
+		void whiteSpace() {
+			ZeroOrMoreChars(Character::isWhitespace);
 		}
 	}
 
@@ -192,29 +202,32 @@ public class ParserFactoryTest {
 	@Test
 	public void simpleTestEvaluation() {
 		ParsingContext ctx = new ParsingContext("2*3+1");
-		EvaluatingParser parser = ParserFactory.create(EvaluatingParser.class, ctx);
+		EvaluatingParser parser = ParserFactory.create(EvaluatingParser.class,
+				ctx);
 		assertEquals(7, parser.InputLine());
 	}
 
 	@Test
 	public void simpleTestEvaluationDiv() {
 		ParsingContext ctx = new ParsingContext("5*1/2+1");
-		EvaluatingParser parser = ParserFactory.create(EvaluatingParser.class, ctx);
+		EvaluatingParser parser = ParserFactory.create(EvaluatingParser.class,
+				ctx);
 		assertEquals(3, parser.InputLine());
 	}
 
 	@Test
 	public void recursive() {
 		ParsingContext ctx = new ParsingContext("1+2*3");
-		RecursiveParser parser = ParserFactory.create(RecursiveParser.class, ctx);
+		RecursiveParser parser = ParserFactory.create(RecursiveParser.class,
+				ctx);
 		assertEquals("(1)+((2)*(3))", parser.input());
 	}
 
 	@Test
 	public void smallRecursive() {
-		ParsingContext ctx = new ParsingContext("bbb");
-		SmallRecursiveParser parser = ParserFactory.create(SmallRecursiveParser.class,
-				ctx);
-		assertEquals("bbb", parser.term());
+		ParsingContext ctx = new ParsingContext(" b bb");
+		SmallRecursiveParser parser = ParserFactory.create(
+				SmallRecursiveParser.class, ctx);
+		assertEquals("bbb", parser.input());
 	}
 }

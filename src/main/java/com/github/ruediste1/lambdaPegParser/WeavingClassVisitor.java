@@ -45,6 +45,6 @@ public class WeavingClassVisitor extends ClassVisitor {
 		MethodVisitor mv = super.visitMethod(access, name, desc, signature,
 				exceptions);
 
-		return new MethodCallInliner(access, desc, mv, prototypeNode);
+		return new MethodCallInliner(mv, prototypeNode);
 	};
 }

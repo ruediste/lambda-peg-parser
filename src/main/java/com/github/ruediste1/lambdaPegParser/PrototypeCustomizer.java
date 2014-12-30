@@ -2,6 +2,7 @@ package com.github.ruediste1.lambdaPegParser;
 
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 import org.objectweb.asm.tree.MethodNode;
 
@@ -32,5 +33,15 @@ public class PrototypeCustomizer extends GeneratorAdapter {
 				super.visitMethodInsn(opcode, owner, name, desc, itf);
 		} else
 			super.visitMethodInsn(opcode, owner, name, desc, itf);
+	}
+
+	@Override
+	public void visitInsn(int opcode) {
+		if (opcode == Opcodes.ARETURN) {
+			Type returnType = Type.getMethodType(ruleNode.desc).getReturnType();
+			unbox(returnType);
+			returnValue();
+		} else
+			super.visitInsn(opcode);
 	}
 }

@@ -9,10 +9,7 @@ public class PrototypeParser extends Parser {
 		super(ctx);
 	}
 
-	private static class SampleRuleResult {
-	}
-
-	public SampleRuleResult sampleRule() {
+	public Object sampleRule() {
 		return null;
 
 	}
@@ -29,7 +26,7 @@ public class PrototypeParser extends Parser {
 		return null;
 	}
 
-	public SampleRuleResult prototypeAdvice() {
+	public Object prototypeAdvice() {
 		ParsingContext ctx = getParsingContext();
 
 		System.out.println("nr: " + getMethodNumber() + " name: "
@@ -49,7 +46,7 @@ public class PrototypeParser extends Parser {
 				System.out.println("recursive");
 				if (existing.seed != null) {
 					ctx.setIndex(existing.seed.index);
-					return (SampleRuleResult) existing.seed.value;
+					return existing.seed.value;
 				} else {
 					System.out.println("throw no match");
 					throw new NoMatchException();
@@ -112,7 +109,7 @@ public class PrototypeParser extends Parser {
 
 			}
 
-			return (SampleRuleResult) result;
+			return result;
 		} catch (Throwable t) {
 			ctx.failed(getClass(), getMethodName());
 			failed = true;
