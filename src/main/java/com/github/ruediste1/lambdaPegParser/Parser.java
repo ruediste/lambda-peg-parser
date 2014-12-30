@@ -1,6 +1,5 @@
 package com.github.ruediste1.lambdaPegParser;
 
-
 import java.lang.reflect.Method;
 import java.util.*;
 import java.util.function.*;
@@ -15,7 +14,7 @@ public class Parser {
 		this.ctx = ctx;
 	}
 
-	private static class Seed {
+	protected static class Seed {
 		Object value;
 		int index;
 
@@ -27,7 +26,7 @@ public class Parser {
 
 	}
 
-	private static class RuleInvocation {
+	protected static class RuleInvocation {
 		public Method method;
 		public Object[] args;
 		public int position;
@@ -88,6 +87,8 @@ public class Parser {
 
 				RuleInvocation pair = new RuleInvocation(method, args, ctx
 						.getIndex());
+
+				// check for left recursions
 				{
 					RuleInvocation existing = currentMethods.get(pair);
 					if (existing != null) {
@@ -104,40 +105,56 @@ public class Parser {
 						currentMethods.put(pair, pair);
 					}
 				}
+
 				ctx.entering(method);
 				boolean failed = false;
 				try {
 					// first rule evaluation
 					int startIndex = ctx.getIndex();
-					Object result = proxy.invokeSuper(obj, args);
+					int progress = startIndex;
+					Object result;
 
-					if (pair.recursive) {
-						// the evaluation was recursive, grow the seed
-						while (true) {
+					while (true) {
+
+						try {
+							result = proxy.invokeSuper(obj, args);
+						} catch (NoMatchException e) {
+							if (pair.seed != null) {
+								// this evaluation failed, break, use the
+								// last seed
+								ctx.setIndex(pair.seed.index);
+								result = pair.seed.value;
+								break;
+							} else
+								throw e;
+						}
+
+						if (pair.recursive) {
+							// the invocation resulted in an recursion, grow the
+							// seed
+
+							if (pair.seed != null && progress >= ctx.getIndex()) {
+								// the evaluation did not grow the seed, break,
+								// use last seed
+
+								ctx.setIndex(pair.seed.index);
+								result = pair.seed.value;
+
+								break;
+							}
+
+							progress = ctx.getIndex();
 							ctx.retrying(method);
-							int progress = ctx.getIndex();
 							pair.recursive = false;
 							pair.seed = new Seed(result, progress);
 							ctx.setIndex(startIndex);
-
-							try {
-								result = proxy.invokeSuper(obj, args);
-							} catch (NoMatchException e) {
-								// this evaluation failed, break, will use the
-								// last seed
-								break;
-							}
-
-							if (progress >= ctx.getIndex()) {
-								// the evaluation did not grow the seed, break,
-								// use last seed
-								break;
-							}
+						} else {
+							// no recursion, we are done
+							break;
 						}
-						// use the last seed
-						ctx.setIndex(pair.seed.index);
-						result = pair.seed.value;
+
 					}
+
 					return result;
 				} catch (Throwable t) {
 					ctx.failed(method);
