@@ -9,7 +9,7 @@ import java.util.stream.Collectors;
 
 import org.junit.Test;
 
-public class ParserTest {
+public class ParserFactoryTest {
 
 	private static class SimpleParser extends Parser {
 
@@ -185,35 +185,35 @@ public class ParserTest {
 	@Test
 	public void simpleTest() {
 		ParsingContext ctx = new ParsingContext("2*3+1");
-		SimpleParser parser = Parser.create(SimpleParser.class, ctx);
+		SimpleParser parser = ParserFactory.create(SimpleParser.class, ctx);
 		assertEquals("((2 mul 3) plus (1))", parser.InputLine());
 	}
 
 	@Test
 	public void simpleTestEvaluation() {
 		ParsingContext ctx = new ParsingContext("2*3+1");
-		EvaluatingParser parser = Parser.create(EvaluatingParser.class, ctx);
+		EvaluatingParser parser = ParserFactory.create(EvaluatingParser.class, ctx);
 		assertEquals(7, parser.InputLine());
 	}
 
 	@Test
 	public void simpleTestEvaluationDiv() {
 		ParsingContext ctx = new ParsingContext("5*1/2+1");
-		EvaluatingParser parser = Parser.create(EvaluatingParser.class, ctx);
+		EvaluatingParser parser = ParserFactory.create(EvaluatingParser.class, ctx);
 		assertEquals(3, parser.InputLine());
 	}
 
 	@Test
 	public void recursive() {
 		ParsingContext ctx = new ParsingContext("1+2*3");
-		RecursiveParser parser = Parser.create(RecursiveParser.class, ctx);
+		RecursiveParser parser = ParserFactory.create(RecursiveParser.class, ctx);
 		assertEquals("(1)+((2)*(3))", parser.input());
 	}
 
 	@Test
 	public void smallRecursive() {
 		ParsingContext ctx = new ParsingContext("bbb");
-		SmallRecursiveParser parser = Parser.create(SmallRecursiveParser.class,
+		SmallRecursiveParser parser = ParserFactory.create(SmallRecursiveParser.class,
 				ctx);
 		assertEquals("bbb", parser.term());
 	}

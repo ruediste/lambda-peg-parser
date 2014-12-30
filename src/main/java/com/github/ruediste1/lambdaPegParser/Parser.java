@@ -1,22 +1,27 @@
 package com.github.ruediste1.lambdaPegParser;
 
-import java.lang.reflect.Method;
-import java.util.*;
-import java.util.function.*;
-
-import net.sf.cglib.proxy.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Objects;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 public class Parser {
 
 	private final ParsingContext ctx;
+
+	protected HashMap<RuleInvocation, RuleInvocation> currentMethods = new HashMap<>();
 
 	public Parser(ParsingContext ctx) {
 		this.ctx = ctx;
 	}
 
 	protected static class Seed {
-		Object value;
-		int index;
+		public Object value;
+		public int index;
 
 		public Seed(Object value, int index) {
 			super();
@@ -27,7 +32,7 @@ public class Parser {
 	}
 
 	protected static class RuleInvocation {
-		public Method method;
+		public int method;
 		public Object[] args;
 		public int position;
 
@@ -35,8 +40,15 @@ public class Parser {
 		public Seed seed;
 
 		@Override
+		public String toString() {
+			return "RuleInvocation [method=" + method + ", args="
+					+ Arrays.toString(args) + ", position=" + position
+					+ ", recursive=" + recursive + ", seed=" + seed + "]";
+		}
+
+		@Override
 		public int hashCode() {
-			return Objects.hash(method, args, position);
+			return Objects.hash(method, Arrays.hashCode(args), position);
 		}
 
 		@Override
@@ -52,124 +64,17 @@ public class Parser {
 			}
 			RuleInvocation other = (RuleInvocation) obj;
 			return Objects.equals(method, other.method)
-					&& Objects.equals(args, other.args)
+					&& Arrays.equals(args, other.args)
 					&& Objects.equals(position, other.position);
 		}
 
-		public RuleInvocation(Method method, Object[] args, int position) {
+		public RuleInvocation(int method, Object[] args, int position) {
 			super();
 			this.method = method;
 			this.args = args;
 			this.position = position;
 		}
 
-	}
-
-	public static <T extends Parser> T create(Class<T> cls, String input) {
-		ParsingContext ctx = new ParsingContext(input);
-		return create(cls, ctx);
-	}
-
-	@SuppressWarnings("unchecked")
-	public static <T extends Parser> T create(Class<T> cls, ParsingContext ctx) {
-		Enhancer e = new Enhancer();
-		e.setSuperclass(cls);
-
-		HashMap<RuleInvocation, RuleInvocation> currentMethods = new HashMap<>();
-		e.setCallback(new MethodInterceptor() {
-
-			@Override
-			public Object intercept(Object obj, Method method, Object[] args,
-					MethodProxy proxy) throws Throwable {
-				if (Parser.class.equals(method.getDeclaringClass())) {
-					return proxy.invokeSuper(obj, args);
-				}
-
-				RuleInvocation pair = new RuleInvocation(method, args, ctx
-						.getIndex());
-
-				// check for left recursions
-				{
-					RuleInvocation existing = currentMethods.get(pair);
-					if (existing != null) {
-						// We ran into a left recursion.
-						// Mark the fact and return the seed if present
-						existing.recursive = true;
-						if (existing.seed != null) {
-							ctx.setIndex(existing.seed.index);
-							return existing.seed.value;
-						} else {
-							throw new NoMatchException();
-						}
-					} else {
-						currentMethods.put(pair, pair);
-					}
-				}
-
-				ctx.entering(method);
-				boolean failed = false;
-				try {
-					// first rule evaluation
-					int startIndex = ctx.getIndex();
-					int progress = startIndex;
-					Object result;
-
-					while (true) {
-
-						try {
-							result = proxy.invokeSuper(obj, args);
-						} catch (NoMatchException e) {
-							if (pair.seed != null) {
-								// this evaluation failed, break, use the
-								// last seed
-								ctx.setIndex(pair.seed.index);
-								result = pair.seed.value;
-								break;
-							} else
-								throw e;
-						}
-
-						if (pair.recursive) {
-							// the invocation resulted in an recursion, grow the
-							// seed
-
-							if (pair.seed != null && progress >= ctx.getIndex()) {
-								// the evaluation did not grow the seed, break,
-								// use last seed
-
-								ctx.setIndex(pair.seed.index);
-								result = pair.seed.value;
-
-								break;
-							}
-
-							progress = ctx.getIndex();
-							ctx.retrying(method);
-							pair.recursive = false;
-							pair.seed = new Seed(result, progress);
-							ctx.setIndex(startIndex);
-						} else {
-							// no recursion, we are done
-							break;
-						}
-
-					}
-
-					return result;
-				} catch (Throwable t) {
-					ctx.failed(method);
-					failed = true;
-					throw t;
-				} finally {
-					currentMethods.remove(pair);
-					if (!failed) {
-						ctx.leaving(method);
-					}
-				}
-			}
-		});
-		return (T) e.create(new Class[] { ParsingContext.class },
-				new Object[] { ctx });
 	}
 
 	public final void EOI() {

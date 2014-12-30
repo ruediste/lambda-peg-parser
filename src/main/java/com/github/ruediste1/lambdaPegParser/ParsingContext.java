@@ -66,4 +66,27 @@ public class ParsingContext {
 				+ " Retrying, was at index: " + index);
 	}
 
+	public void entering(Class<? extends PrototypeParser> cls, String methodName) {
+		System.out.println(indent() + cls.getName() + "." + methodName
+				+ " Entering, index: " + index);
+		depth++;
+	}
+
+	public void failed(Class<? extends PrototypeParser> cls, String methodName) {
+		depth--;
+		System.out.println(indent() + cls.getName() + "." + methodName
+				+ " Failed, index: " + index);
+	}
+
+	public void leaving(Class<? extends PrototypeParser> cls, String methodName) {
+		depth--;
+		System.out.println(indent() + cls.getName() + "." + methodName
+				+ " Leaving, index: " + index);
+	}
+
+	public void retrying(Class<? extends PrototypeParser> cls, String methodName) {
+		System.out.println(indent(depth - 1) + cls.getName() + "." + methodName
+				+ " Retrying, was at index: " + index);
+	}
+
 }
