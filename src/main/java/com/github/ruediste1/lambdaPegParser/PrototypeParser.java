@@ -29,26 +29,20 @@ public class PrototypeParser extends Parser {
 	public Object prototypeAdvice() {
 		ParsingContext ctx = getParsingContext();
 
-		System.out.println("nr: " + getMethodNumber() + " name: "
-				+ getMethodName());
 		RuleInvocation pair = new RuleInvocation(getMethodNumber(), getArgs(),
 				ctx.getIndex());
 
 		// check for left recursions
 		{
 			RuleInvocation existing = currentMethods.get(pair);
-			System.out.println("pair: " + pair);
-			System.out.println("existing: " + existing);
 			if (existing != null) {
 				// We ran into a left recursion.
 				// Mark the fact and return the seed if present
 				existing.recursive = true;
-				System.out.println("recursive");
 				if (existing.seed != null) {
 					ctx.setIndex(existing.seed.index);
 					return existing.seed.value;
 				} else {
-					System.out.println("throw no match");
 					throw new NoMatchException();
 				}
 			} else {
@@ -67,11 +61,8 @@ public class PrototypeParser extends Parser {
 			while (true) {
 
 				try {
-					System.out.println("evaluate rule");
 					result = sampleRule();
-					System.out.println("after rule");
 				} catch (NoMatchException e) {
-					System.out.println("no match in rule");
 					if (pair.seed != null) {
 						// this evaluation failed, break, use the
 						// last seed
@@ -86,7 +77,6 @@ public class PrototypeParser extends Parser {
 					// the invocation resulted in an recursion, grow the
 					// seed
 
-					System.out.println("was recursive");
 					if (pair.seed != null && progress >= ctx.getIndex()) {
 						// the evaluation did not grow the seed, break,
 						// use last seed

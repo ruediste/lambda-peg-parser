@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Objects;
+import java.util.PrimitiveIterator.OfInt;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
@@ -79,7 +80,7 @@ public class Parser {
 
 	public final void EOI() {
 		if (!getParsingContext().isEOI()) {
-			throw new NoMatchException();
+			throw new NoMatchException(getParsingContext(), "End Of Input");
 		}
 	}
 
@@ -146,17 +147,11 @@ public class Parser {
 		}
 	}
 
-	public final void OneOrMore(Runnable term) {
-		OneOrMore(() -> {
-			term.run();
-			return null;
-		}, coll -> null);
-	}
-
-	public final String OneOrMoreChars(Predicate<Integer> criteria) {
+	public final String OneOrMoreChars(Predicate<Integer> criteria,
+			String expectation) {
 		String result = ZeroOrMoreChars(criteria);
 		if (result.isEmpty()) {
-			throw new NoMatchException();
+			throw new NoMatchException(getParsingContext(), expectation);
 		}
 		return result;
 	}
@@ -176,12 +171,7 @@ public class Parser {
 		return sb.toString();
 	}
 
-	public final <T, P> T OneOrMore(Supplier<P> term,
-			Function<Collection<P>, T> combiner) {
-		return combiner.apply(OneOrMore(term));
-	}
-
-	public final <T> ArrayList<T> OneOrMore(Supplier<T> term)
+	public final <T> Collection<T> OneOrMore(Supplier<T> term)
 			throws NoMatchException {
 		ArrayList<T> parts = new ArrayList<>();
 		while (true) {
@@ -201,43 +191,101 @@ public class Parser {
 		return parts;
 	}
 
+	public final void OneOrMore(Runnable term) {
+		boolean found = false;
+		while (true) {
+			int index = getParsingContext().getIndex();
+			try {
+				term.run();
+				found = true;
+			} catch (NoMatchException e) {
+				// swallow, restore index, break loop
+				getParsingContext().setIndex(index);
+				break;
+			}
+		}
+		if (!found) {
+			throw new NoMatchException();
+		}
+	}
+
+	public final <T> T Try(String expectation, Supplier<T> term) {
+		getParsingContext().pushExpectationFrame();
+		boolean failed = false;
+		try {
+			return term.get();
+		} catch (NoMatchException e) {
+			failed = true;
+			getParsingContext().popExpectationFrame(expectation);
+			throw e;
+		} finally {
+			if (!failed)
+				getParsingContext().popExpectationFrame();
+		}
+	}
+
 	public final String AnyChar() {
 		return new String(Character.toChars(getParsingContext().next()));
 	}
 
-	public final String Chars(String chars) {
-		return Chars(chars, chars);
-	}
-
-	public final <T> T Chars(String chars, T result) {
-		return Chars(chars, () -> result);
-	}
-
-	public final <T> T Chars(String chars, Supplier<T> result) {
-		chars.codePoints().forEachOrdered(cp -> {
-			if (cp != getParsingContext().next()) {
-				throw new NoMatchException();
+	private boolean matchString(String expected) {
+		OfInt it = expected.codePoints().iterator();
+		while (it.hasNext()) {
+			if (it.nextInt() != getParsingContext().next()) {
+				return false;
 			}
-		});
-		return result.get();
+		}
+		return true;
 	}
 
-	public final String Char(Predicate<Integer> predicate) {
+	public final String String(String expected) {
+		if (!matchString(expected))
+			throw new NoMatchException(getParsingContext(), expected);
+		else
+			return expected;
+	}
+
+	public final <T> T String(String expected, T result) {
+		if (!matchString(expected))
+			throw new NoMatchException(getParsingContext(), expected);
+		else
+			return result;
+	}
+
+	/**
+	 * Match the input at the current position against the expected string. If
+	 * the input matches, use the result supplier to return the result
+	 */
+	public final <T> T String(String expected, Supplier<T> result) {
+		if (!matchString(expected))
+			throw new NoMatchException(getParsingContext(), "string <"
+					+ expected + ">");
+		else
+			return result.get();
+	}
+
+	public final String Char(Predicate<Integer> predicate,
+			java.lang.String expectation) {
 		int cp = getParsingContext().next();
 		if (predicate.test(cp)) {
 			return new String(Character.toChars(cp));
 		} else {
-			throw new NoMatchException();
+			throw new NoMatchException(getParsingContext(), expectation);
 		}
 
 	}
 
-	public final String CharRange(char first, char last) {
+	public final String CharRange(int first, int last) {
 		int cp = getParsingContext().next();
 		if (cp >= first && cp <= last) {
 			return new String(Character.toChars(cp));
 		} else {
-			throw new NoMatchException();
+			StringBuilder sb = new StringBuilder();
+			sb.append("character between ");
+			sb.appendCodePoint(cp);
+			sb.append(" and ");
+			sb.appendCodePoint(last);
+			throw new NoMatchException(getParsingContext(), sb.toString());
 		}
 	}
 

@@ -10,6 +10,18 @@ import org.junit.Test;
 
 public class ParserFactoryTest {
 
+	/**
+	 * Grammar:
+	 * 
+	 * <pre>
+	 * Expression ← Term ((‘+’ / ‘-’) Term)*
+	 * Term       ← Factor ((‘*’ / ‘/’) Factor)*
+	 * Factor     ← Number / Parens
+	 * Number     ← Digit+
+	 * Parens     ← ‘(’ expression ‘)’
+	 * Digit      ← [0-9]
+	 * </pre>
+	 */
 	private static class SimpleParser extends Parser {
 
 		public SimpleParser(ParsingContext ctx) {
@@ -26,8 +38,10 @@ public class ParserFactoryTest {
 			return "("
 					+ Term()
 					+ ZeroOrMore(
-							() -> FirstOf(() -> Chars("+", " plus "),
-									() -> Chars("-", " minus ")) + Term() + ")",
+							() -> FirstOf(() -> String("+", " plus "),
+									() -> String("-", " minus "))
+									+ Term()
+									+ ")",
 							strs -> strs.stream().collect(Collectors.joining()));
 		}
 
@@ -35,8 +49,8 @@ public class ParserFactoryTest {
 			return "("
 					+ Factor()
 					+ ZeroOrMore(
-							() -> FirstOf(() -> Chars("*", " mul "),
-									() -> Chars("/", " div")) + Factor(),
+							() -> FirstOf(() -> String("*", " mul "),
+									() -> String("/", " div")) + Factor(),
 							strs -> strs.stream().collect(Collectors.joining()))
 					+ ")";
 		}
@@ -46,19 +60,30 @@ public class ParserFactoryTest {
 		}
 
 		String Parens() {
-			return Chars("(", "(") + Expression() + Chars(")", ")");
+			return String("(", "(") + Expression() + String(")", ")");
 		}
 
 		String Number() {
-			return OneOrMore(this::Digit,
-					strs -> strs.stream().collect(joining()));
+			return OneOrMore(this::Digit).stream().collect(joining());
 		}
 
 		String Digit() {
-			return Char(Character::isDigit);
+			return Char(Character::isDigit, "digit");
 		}
 	}
 
+	/**
+	 * Grammar:
+	 * 
+	 * <pre>
+	 * Expression ← Term ((‘+’ / ‘-’) Term)*
+	 * Term       ← Factor ((‘*’ / ‘/’) Factor)*
+	 * Factor     ← Number / Parens
+	 * Number     ← Digit+
+	 * Parens     ← ‘(’ expression ‘)’
+	 * Digit      ← [0-9]
+	 * </pre>
+	 */
 	private static class EvaluatingParser extends Parser {
 
 		public EvaluatingParser(ParsingContext ctx) {
@@ -73,8 +98,8 @@ public class ParserFactoryTest {
 
 		int Expression() {
 			int left = Term();
-			return FirstOf(() -> Chars("+", () -> left + Term()),
-					() -> Chars("-", () -> left - Term()));
+			return FirstOf(() -> String("+", () -> left + Term()),
+					() -> String("-", () -> left - Term()));
 		}
 
 		int Term() {
@@ -82,11 +107,11 @@ public class ParserFactoryTest {
 
 			return this.<Integer, Function<Integer, Integer>> ZeroOrMore(
 					() -> FirstOf(() -> {
-						Chars("*");
+						String("*");
 						int right = Factor();
 						return x -> x * right;
 					}, () -> {
-						Chars("/");
+						String("/");
 						int right = Factor();
 						return x -> x / right;
 					}), funcs -> {
@@ -103,27 +128,29 @@ public class ParserFactoryTest {
 		}
 
 		int Parens() {
-			Chars("(");
+			String("(");
 			int result = Expression();
-			Chars(")");
+			String(")");
 			return result;
 		}
 
 		int Number() {
-			return Integer.valueOf(OneOrMore(this::Digit, strs -> strs.stream()
-					.collect(joining())));
+			return Integer.valueOf(OneOrMore(this::Digit).stream().collect(
+					joining()));
 		}
 
 		String Digit() {
-			return Char(Character::isDigit);
+			return Char(Character::isDigit, "digit");
 		}
 	}
 
 	/**
+	 * Grammar:
+	 * 
 	 * <pre>
 	 * Expr    ← Product / Sum / Value
-	 * Product ← Expr (('*' / '/') Expr)*
-	 * Sum     ← Expr (('+' / '-') Expr)*
+	 * Product ← Expr (('*' / '/') Expr)+
+	 * Sum     ← Expr (('+' / '-') Expr)+
 	 * Value   ← [0-9.]+ / '(' Expr ')'
 	 * </pre>
 	 *
@@ -146,43 +173,58 @@ public class ParserFactoryTest {
 		}
 
 		String product() {
-			return "("
-					+ expr()
-					+ ")"
-					+ OneOrMore(
-							() -> FirstOf(() -> Chars("*"), () -> Chars("/"))
-									+ "(" + expr() + ")", funcs -> funcs
-									.stream().collect(joining()));
+			return Try(
+					"product",
+					() -> "("
+							+ expr()
+							+ ")"
+							+ OneOrMore(
+									() -> FirstOf(() -> String("*"),
+											() -> String("/"))
+											+ "("
+											+ expr()
+											+ ")").stream().collect(joining()));
 		}
 
 		String sum() {
-			return "("
-					+ expr()
-					+ ")"
-					+ OneOrMore(
-							() -> FirstOf(() -> Chars("+"), () -> Chars("-"))
-									+ "(" + expr() + ")", funcs -> funcs
-									.stream().collect(joining()));
+			return Try(
+					"sum",
+					() -> "("
+							+ expr()
+							+ ")"
+							+ OneOrMore(
+									() -> FirstOf(() -> String("+"),
+											() -> String("-"))
+											+ "("
+											+ expr()
+											+ ")").stream().collect(joining()));
 		}
 
 		String value() {
-			return FirstOf(() -> OneOrMoreChars(Character::isDigit),
-					() -> Chars("(") + expr() + Chars(")"));
+			return FirstOf(() -> OneOrMoreChars(Character::isDigit, "digit"),
+					() -> String("(") + expr() + String(")"));
 		}
 	}
 
-	static class SmallRecursiveParser extends Parser {
+	public interface ISmallRecursiveParser {
+		String input();
+	}
+
+	static class SmallRecursiveParser extends Parser implements
+			ISmallRecursiveParser {
 		public SmallRecursiveParser(ParsingContext ctx) {
 			super(ctx);
 		}
 
-		String input() {
+		@Override
+		public String input() {
 			whiteSpace();
 			return term();
 		}
 
 		String term() {
-			String result = FirstOf(() -> term() + Chars("b"), () -> Chars("b"));
+			String result = FirstOf(() -> term() + String("b"),
+					() -> String("b"));
 			whiteSpace();
 			return result;
 		}
@@ -224,10 +266,23 @@ public class ParserFactoryTest {
 	}
 
 	@Test
+	public void recursiveError() {
+		ParsingContext ctx = new ParsingContext("1+2%3");
+		try {
+			ParserFactory.create(RecursiveParser.class, ctx).input();
+		} catch (NoMatchException e) {
+			assertEquals(
+					"Error on line 1. Expected: product, End Of Input, sum\n"
+							+ "1+2%3\n" + "    ^", e.getMessage());
+		}
+	}
+
+	@Test
 	public void smallRecursive() {
-		ParsingContext ctx = new ParsingContext(" b bb");
-		SmallRecursiveParser parser = ParserFactory.create(
-				SmallRecursiveParser.class, ctx);
+		ISmallRecursiveParser parser = ParserFactory.create(
+				SmallRecursiveParser.class, ISmallRecursiveParser.class,
+				" b bb");
 		assertEquals("bbb", parser.input());
 	}
+
 }
