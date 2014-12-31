@@ -30,11 +30,29 @@ public class MethodCallInliner extends GeneratorAdapter {
 	private final MethodNode toBeInlined;
 	private List<CatchBlock> blocks = new ArrayList<CatchBlock>();
 	private boolean inlining;
+	private boolean afterInlining;
+	private MinMaxLineMethodAdapter minMaxLineMethodAdapter;
 
-	public MethodCallInliner(MethodVisitor mv, MethodNode toBeInlined) {
+	public MethodCallInliner(MethodVisitor mv, MethodNode toBeInlined,
+			MinMaxLineMethodAdapter minMaxLineMethodAdapter) {
 		super(Opcodes.ASM5, mv, toBeInlined.access, toBeInlined.name,
 				toBeInlined.desc);
 		this.toBeInlined = toBeInlined;
+		this.minMaxLineMethodAdapter = minMaxLineMethodAdapter;
+	}
+
+	@Override
+	public void visitLineNumber(int line, Label start) {
+		if (!inlining) {
+			if (!afterInlining) {
+				int min = minMaxLineMethodAdapter.getMinLineNumberOr(1);
+				super.visitLineNumber(min > 1 ? min - 1 : 1, start);
+			} else {
+				int max = minMaxLineMethodAdapter.getMaxLineNumberOr(1);
+				super.visitLineNumber(max + 1, start);
+			}
+		} else
+			super.visitLineNumber(line, start);
 	}
 
 	@Override
@@ -53,6 +71,7 @@ public class MethodCallInliner extends GeneratorAdapter {
 		toBeInlined.accept(new InliningAdapter(this, end,
 				opcode == Opcodes.INVOKESTATIC ? Opcodes.ACC_STATIC : 0, desc));
 		inlining = false;
+		afterInlining = true;
 
 		// visit the end label
 		super.visitLabel(end);

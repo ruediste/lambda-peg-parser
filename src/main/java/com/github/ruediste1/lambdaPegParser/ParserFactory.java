@@ -84,34 +84,40 @@ public class ParserFactory {
 
 				// modify methods
 				for (int i = 0; i < cn.methods.size(); i++) {
-					MethodNode node = (MethodNode) cn.methods.get(i);
-					if ("<init>".equals(node.name))
+					MethodNode ruleNode = (MethodNode) cn.methods.get(i);
+					if ("<init>".equals(ruleNode.name))
 						continue;
-					if ((Opcodes.ACC_STATIC & node.access) != 0)
+					if ((Opcodes.ACC_STATIC & ruleNode.access) != 0)
 						continue;
-					if ((Opcodes.ACC_SYNTHETIC & node.access) != 0)
+					if ((Opcodes.ACC_SYNTHETIC & ruleNode.access) != 0)
 						continue;
+
+					// get minimum and maximum line numbers
+					MinMaxLineMethodAdapter minMaxLineMethodAdapter = new MinMaxLineMethodAdapter(
+							Opcodes.ASM5, null);
+					ruleNode.accept(minMaxLineMethodAdapter);
 
 					MethodNode newNode;
 					{
-						String[] exceptions = ((List<String>) node.exceptions)
+						String[] exceptions = ((List<String>) ruleNode.exceptions)
 								.toArray(new String[] {});
 
-						newNode = new MethodNode(node.access, node.name,
-								node.desc, node.signature, exceptions);
+						newNode = new MethodNode(ruleNode.access,
+								ruleNode.name, ruleNode.desc,
+								ruleNode.signature, exceptions);
 					}
 
 					RemappingMethodAdapter remapper = new RemappingMethodAdapter(
-							node.access, node.desc, newNode,
+							ruleNode.access, ruleNode.desc, newNode,
 							new SimpleRemapper(PrototypeParser.class.getName()
 									.replace('.', '/'),
 									parserClassName.replace('.', '/')));
 
-					MethodCallInliner inliner = new MethodCallInliner(
-							remapper, node);
+					MethodCallInliner inliner = new MethodCallInliner(remapper,
+							ruleNode, minMaxLineMethodAdapter);
 
 					PrototypeCustomizer prototypeCustomizer = new PrototypeCustomizer(
-							inliner, node, i);
+							inliner, ruleNode, i);
 
 					prototype.accept(prototypeCustomizer);
 
