@@ -217,13 +217,13 @@ public class Parser {
 			throws NoMatchException {
 		ArrayList<T> parts = new ArrayList<>();
 		while (true) {
-			int index = getParsingContext().getIndex();
+			int index = ctx.getIndex();
 			try {
 				parts.add(term.get());
 
 			} catch (NoMatchException e) {
 				// swallow, restore index, break loop
-				getParsingContext().setIndex(index);
+				ctx.setIndex(index);
 				break;
 			}
 		}
@@ -236,13 +236,13 @@ public class Parser {
 	public final void OneOrMore(Runnable term) {
 		boolean found = false;
 		while (true) {
-			int index = getParsingContext().getIndex();
+			int index = ctx.getIndex();
 			try {
 				term.run();
 				found = true;
 			} catch (NoMatchException e) {
 				// swallow, restore index, break loop
-				getParsingContext().setIndex(index);
+				ctx.setIndex(index);
 				break;
 			}
 		}
@@ -251,21 +251,26 @@ public class Parser {
 		}
 	}
 
+	/**
+	 * Try matching the supplied term. If the term can not successfully be
+	 * parsed and it does not consume any input, all expectations generated
+	 * while matching the term are replaced with the single specified
+	 * expectation.
+	 */
 	public final <T> T Try(String expectation, Supplier<T> term) {
-		getParsingContext().pushExpectationFrame();
-		boolean failed = false;
+		int startIdx = ctx.getIndex();
+		ctx.pushExpectationFrame();
 		try {
 			return term.get();
-		} catch (NoMatchException e) {
-			failed = true;
-			getParsingContext().popExpectationFrame(expectation);
-			throw e;
 		} finally {
-			if (!failed)
-				getParsingContext().popExpectationFrame();
+			ctx.popExpectationFrame(startIdx, expectation);
 		}
 	}
 
+	/**
+	 * Match any character. The returned string contains the matched unicode
+	 * character, as one or two chars (for surrogate pairs)
+	 */
 	public final String AnyChar() {
 		return new String(Character.toChars(getParsingContext().next()));
 	}
@@ -280,6 +285,9 @@ public class Parser {
 		return true;
 	}
 
+	/**
+	 * Match a String. The matched string is returned.
+	 */
 	public final String String(String expected) {
 		if (!matchString(expected))
 			throw new NoMatchException(getParsingContext(), expected);
@@ -287,9 +295,12 @@ public class Parser {
 			return expected;
 	}
 
+	/**
+	 * Match a String. The provided result is returned.
+	 */
 	public final <T> T String(String expected, T result) {
 		if (!matchString(expected))
-			throw new NoMatchException(getParsingContext(), expected);
+			throw new NoMatchException(ctx, expected);
 		else
 			return result;
 	}
@@ -300,23 +311,30 @@ public class Parser {
 	 */
 	public final <T> T String(String expected, Supplier<T> result) {
 		if (!matchString(expected))
-			throw new NoMatchException(getParsingContext(), "string <"
-					+ expected + ">");
+			throw new NoMatchException(ctx, "string <" + expected + ">");
 		else
 			return result.get();
 	}
 
-	public final String Char(Predicate<Integer> predicate,
-			java.lang.String expectation) {
+	/**
+	 * Match a character using the given predicate which is evaluated against
+	 * the next code point in the input. If the match fails, the specified
+	 * expectation is reported.
+	 */
+	public final String Char(Predicate<Integer> predicate, String expectation) {
 		int cp = getParsingContext().next();
 		if (predicate.test(cp)) {
 			return new String(Character.toChars(cp));
 		} else {
-			throw new NoMatchException(getParsingContext(), expectation);
+			throw new NoMatchException(ctx, expectation);
 		}
 
 	}
 
+	/**
+	 * Match all characters in a given range (inclusive). Return a string
+	 * containing only the matched character.
+	 */
 	public final String CharRange(int first, int last) {
 		int cp = getParsingContext().next();
 		if (cp >= first && cp <= last) {
@@ -327,10 +345,13 @@ public class Parser {
 			sb.appendCodePoint(cp);
 			sb.append(" and ");
 			sb.appendCodePoint(last);
-			throw new NoMatchException(getParsingContext(), sb.toString());
+			throw new NoMatchException(ctx, sb.toString());
 		}
 	}
 
+	/**
+	 * Return the parsing context of this parser
+	 */
 	public final ParsingContext getParsingContext() {
 		return ctx;
 	}

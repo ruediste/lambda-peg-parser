@@ -60,16 +60,16 @@ The following code snippet uses the grammar above to parse the input "1+2":
 
 ## Error Reporting
 Error reporting uses the farthest failure heuristic discussed in ["Packrat Parsing: a Practical Linear-Time Algorithm with Backtracking" by Bryan Ford](http://bford.info/pub/lang/thesis.pdf) section "3.2.4
-Error Handling", which basically reports all unmet expectations which occur at the farthest input position reached by the parser. In addition, a rule (or part thereof) can 
+Error Handling", which basically reports all unmet expectations which occur at the farthest input position reached by the parser. In addition, the **Try()** method replaces all expectations with a single specified expectation, if no progress is achieved while parsing the supplied term.
 
-This heuristic is combined with the idea of an expectation frame stack. The expectations are always collected in the current frame. Using the **Try** method, a new expectation frame is started. If parsing the nested term fails, the current frame is dropped and a single expectation is added to the frame below, containing just the expectation noted in the **Try** call at the input position of the dropped frame.
+To implement the **Try()** method the so-called expectation frame stack is used. The expectations are always collected in the current frame. Using the **Try** method, a new expectation frame is started. If parsing the nested term fails and no progress has been achieved, the current frame is dropped and a single expectation is added to the frame below, containing just the expectation noted in the **Try()** call.
 
 ## Implementation
 Due to the heavy use of lambda expressions, the rule methods implement a recursive descent parser almost as-is. The only missing piece is the support for left recursion. 
 
-The algorithm outlined in ["Packrat Parsers Can Support Left Recursion" by Alessandro Warth, James R. Douglass, Todd Millstein](www.vpri.org/pdf/tr2007002_packrat.pdf)
+An adaption of the algorithm outlined in ["Packrat Parsers Can Support Left Recursion" by Alessandro Warth, James R. Douglass, Todd Millstein](www.vpri.org/pdf/tr2007002_packrat.pdf) is used. We keep track of all rule method invocations on the current stack. Whenever a left-recursive entry into a rule method is detected, the current seed (or failure if no seed exists) is returned. Upon exit of the recursive method, the seed is stored and the rule reevaluated.
 
-To support left recursion it is necessary to add an around advice to the rule methods. This could easily be accomplished using a cglib. However, the resulting stack traces contain many artificial entries and debugging experience is far from perfect. Therefore, before instantiating a parser class, the class is transformed to contain the advice and loaded using a separate class loader. The resulting instance can either be accessed through an interface, or a proxy of the parser class is created which forwards to the real parser instance.
+To implement this algorithm it is necessary to add an around advice to the rule methods. This could easily be accomplished using a cglib. However, the resulting stack traces contain many artificial entries and debugging experience is far from perfect. Therefore, before instantiating a parser class, the class is transformed using [ASM](http://asm.ow2.org/) to contain the advice in their methods and loaded using a separate class loader. The resulting instance can either be accessed through an interface, or a proxy of the parser class is created which forwards to the real parser instance.
 
 ## Pluggable Grammars
 Plugging different grammars is really easy. Multiple parsers using the same **ParsingContext** can freely cooperate. Just instantiate the parsers using a single context and register them with each other. 

@@ -99,22 +99,32 @@ public class ParsingContext {
 		expectationFrameStack.push(new ExpectationFrame());
 	}
 
-	public void popExpectationFrame() {
-		expectationFrameStack.pop();
-	}
-
-	/**
-	 * Pop the current {@link ExpectationFrame} and add the new expectation at
-	 * the index of the current frame to the underlying frame.
-	 */
-	public void popExpectationFrame(String newExpectation) {
+	public void popExpectationFrame(int index, String replacementExpectation) {
 		ExpectationFrame frame = expectationFrameStack.pop();
-		expectationFrameStack.peek()
-				.addExpectation(frame.index, newExpectation);
+		if (frame.index > getExpectationsIndex()) {
+			// the frame to pop is farther to the right, use it's expectations
+			expectationFrameStack.peek().expectations = frame.expectations;
+		} else if (frame.index == getExpectationsIndex()) {
+			// the frame is at the same position as the underlying frame
+			if (index == frame.index)
+				// replace all expectations of frame with the
+				// replacementExpectation
+				expectationFrameStack.peek().expectations
+						.add(replacementExpectation);
+			else
+				// merge frames
+				expectationFrameStack.peek().expectations
+						.addAll(frame.expectations);
+
+		}
 	}
 
 	public String getErrorMessage() {
 		return getErrorDescription().toString();
+	}
+
+	public int getExpectationsIndex() {
+		return expectationFrameStack.peek().index;
 	}
 
 	public Set<String> getExpectations() {
