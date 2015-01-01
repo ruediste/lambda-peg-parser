@@ -6,10 +6,12 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Objects;
 import java.util.PrimitiveIterator.OfInt;
-import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
+/**
+ * Base class for parser classes.
+ */
 public class Parser {
 
 	private final ParsingContext ctx;
@@ -20,6 +22,9 @@ public class Parser {
 		this.ctx = ctx;
 	}
 
+	/**
+	 * Represents a seed for handling left recursive grammars.
+	 */
 	protected static class Seed {
 		public Object value;
 		public int index;
@@ -32,6 +37,10 @@ public class Parser {
 
 	}
 
+	/**
+	 * The invocation of a rule. Contains the method and arguments as well as
+	 * the input position. Used to handle left recursive grammars.
+	 */
 	protected static class RuleInvocation {
 		public int method;
 		public Object[] args;
@@ -75,15 +84,39 @@ public class Parser {
 			this.args = args;
 			this.position = position;
 		}
-
 	}
 
+	/**
+	 * Matches the end of the input
+	 */
 	public final void EOI() {
 		if (!getParsingContext().isEOI()) {
 			throw new NoMatchException(getParsingContext(), "End Of Input");
 		}
 	}
 
+	/**
+	 * Tries each choice in turn until a choice can successfully be matched
+	 */
+	@SafeVarargs
+	public final void FirstOf(Runnable... choices) {
+		for (Runnable choice : choices) {
+			int index = getParsingContext().getIndex();
+			try {
+				choice.run();
+				return;
+			} catch (NoMatchException e) {
+				// swallow, restore index
+				getParsingContext().setIndex(index);
+			}
+		}
+		throw new NoMatchException();
+	}
+
+	/**
+	 * Tries each choice in turn until a choice can successfully be matched and
+	 * returns it's value
+	 */
 	@SafeVarargs
 	public final <T> T FirstOf(Supplier<T>... choices) {
 		for (Supplier<T> choice : choices) {
@@ -98,13 +131,27 @@ public class Parser {
 		throw new NoMatchException();
 	}
 
+	/**
+	 * Repeat matching the term until it fails. Succeeds even if the term never
+	 * matches.
+	 */
 	public final void ZeroOrMore(Runnable term) {
-		ZeroOrMore(() -> {
-			term.run();
-			return null;
-		}, a -> null);
+		while (true) {
+			int index = getParsingContext().getIndex();
+			try {
+				term.run();
+			} catch (NoMatchException e) {
+				// swallow, restore index, break loop
+				getParsingContext().setIndex(index);
+				break;
+			}
+		}
 	}
 
+	/**
+	 * Repeat matching the term until it fails. Succeeds even if the term never
+	 * matches. The return values of the terms are collected and returned.
+	 */
 	public final <T> Collection<T> ZeroOrMore(Supplier<T> term) {
 		ArrayList<T> parts = new ArrayList<>();
 		while (true) {
@@ -120,13 +167,8 @@ public class Parser {
 		return parts;
 	}
 
-	public final <T, P> T ZeroOrMore(Supplier<P> term,
-			Function<Collection<P>, T> combiner) {
-		return combiner.apply(ZeroOrMore(term));
-	}
-
-	public final <T> T Optional(Runnable term) {
-		return Optional(() -> {
+	public final void Optional(Runnable term) {
+		Optional(() -> {
 			term.run();
 			return null;
 		}, () -> null);

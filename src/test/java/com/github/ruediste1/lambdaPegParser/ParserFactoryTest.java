@@ -3,6 +3,7 @@ package com.github.ruediste1.lambdaPegParser;
 import static java.util.stream.Collectors.joining;
 import static org.junit.Assert.assertEquals;
 
+import java.util.Collection;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -41,8 +42,8 @@ public class ParserFactoryTest {
 							() -> FirstOf(() -> String("+", " plus "),
 									() -> String("-", " minus "))
 									+ Term()
-									+ ")",
-							strs -> strs.stream().collect(Collectors.joining()));
+									+ ")").stream().collect(
+							Collectors.joining());
 		}
 
 		String Term() {
@@ -50,9 +51,8 @@ public class ParserFactoryTest {
 					+ Factor()
 					+ ZeroOrMore(
 							() -> FirstOf(() -> String("*", " mul "),
-									() -> String("/", " div")) + Factor(),
-							strs -> strs.stream().collect(Collectors.joining()))
-					+ ")";
+									() -> String("/", " div")) + Factor())
+							.stream().collect(Collectors.joining()) + ")";
 		}
 
 		String Factor() {
@@ -105,8 +105,8 @@ public class ParserFactoryTest {
 		int Term() {
 			int left = Factor();
 
-			return this.<Integer, Function<Integer, Integer>> ZeroOrMore(
-					() -> FirstOf(() -> {
+			Collection<Function<Integer, Integer>> funcs = ZeroOrMore(() -> FirstOf(
+					() -> {
 						String("*");
 						int right = Factor();
 						return x -> x * right;
@@ -114,13 +114,13 @@ public class ParserFactoryTest {
 						String("/");
 						int right = Factor();
 						return x -> x / right;
-					}), funcs -> {
-						int result = left;
-						for (Function<Integer, Integer> f : funcs) {
-							result = f.apply(result);
-						}
-						return result;
-					});
+					}));
+
+			int result = left;
+			for (Function<Integer, Integer> f : funcs) {
+				result = f.apply(result);
+			}
+			return result;
 		}
 
 		int Factor() {
