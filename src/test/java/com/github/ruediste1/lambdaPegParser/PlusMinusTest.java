@@ -15,9 +15,9 @@ public class PlusMinusTest {
 	 * number = digit +
 	 * </pre>
 	 */
-	public static class PlusMinusParser extends Parser {
+	public static class PlusMinusParser extends DefaultParser {
 
-		public PlusMinusParser(ParsingContext ctx) {
+		public PlusMinusParser(DefaultParsingContext ctx) {
 			super(ctx);
 		}
 
@@ -52,7 +52,7 @@ public class PlusMinusTest {
 
 	@Test
 	public void addition() {
-		ParsingContext ctx = new ParsingContext("1+2");
+		DefaultParsingContext ctx = new DefaultParsingContext("1+2");
 		PlusMinusParser parser = ParserFactory.create(PlusMinusParser.class,
 				ctx);
 		int result = parser.input();

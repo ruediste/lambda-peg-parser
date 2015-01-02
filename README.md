@@ -17,9 +17,9 @@ A grammar is defined by creating a subclass of the **Parser** class. Each method
 	 * number = digit +
 	 * </pre>
 	 */
-	public class PlusMinusParser extends Parser {
+	public class PlusMinusParser extends DefaultParser {
 
-		public PlusMinusParser(ParsingContext ctx) {
+		public PlusMinusParser(DefaultParsingContext ctx) {
 			super(ctx);
 		}
 
@@ -52,7 +52,7 @@ Instances of the parser are created using the **ParserFactory** and associated w
 
 The following code snippet uses the grammar above to parse the input "1+2":
 
-	ParsingContext ctx = new ParsingContext("1+2");
+	DefaultParsingContext ctx = new DefaultParsingContext("1+2");
 	PlusMinusParser parser = ParserFactory.create(PlusMinusParser.class, ctx);
 	int result = parser.input();
 	// result is now 3

@@ -8,14 +8,25 @@ import java.util.Deque;
 import java.util.HashSet;
 import java.util.Set;
 
-public class ParsingContext {
+public class ParsingContext<TState extends ParsingState<TState>> {
 	String content;
 
-	private int index;
+	TState state;
 
 	public ParsingContext(String content) {
 		this.content = content;
+		state = createInitialState();
 		expectationFrameStack.push(new ExpectationFrame());
+	}
+
+	public void setContent(String content) {
+		this.content = content;
+		state = createInitialState();
+	}
+
+	@SuppressWarnings("unchecked")
+	protected TState createInitialState() {
+		return (TState) new ParsingState<>();
 	}
 
 	public int next() {
@@ -23,7 +34,7 @@ public class ParsingContext {
 			throw new NoMatchException(this, "any character");
 		}
 		int result = content.codePointAt(getIndex());
-		index = index + Character.charCount(result);
+		setIndex(getIndex() + Character.charCount(result));
 		return result;
 	}
 
@@ -32,11 +43,33 @@ public class ParsingContext {
 	}
 
 	public int getIndex() {
-		return index;
+		return state.getIndex();
 	}
 
 	public void setIndex(int index) {
-		this.index = index;
+		state.setIndex(index);
+	}
+
+	public interface StateSnapshot {
+		void restore();
+	}
+
+	private class StateSnapshotImpl implements StateSnapshot {
+		TState snapshot;
+
+		public StateSnapshotImpl() {
+			snapshot = state.clone();
+		}
+
+		@Override
+		public void restore() {
+			state = snapshot;
+		}
+
+	}
+
+	public StateSnapshot snapshot() {
+		return new StateSnapshotImpl();
 	}
 
 	private int depth;
@@ -55,25 +88,25 @@ public class ParsingContext {
 
 	public void entering(Class<?> cls, String methodName) {
 		System.out.println(indent() + cls.getName() + "." + methodName
-				+ " Entering, index: " + index);
+				+ " Entering, index: " + getIndex());
 		depth++;
 	}
 
 	public void failed(Class<?> cls, String methodName) {
 		depth--;
 		System.out.println(indent() + cls.getName() + "." + methodName
-				+ " Failed, index: " + index);
+				+ " Failed, index: " + getIndex());
 	}
 
 	public void leaving(Class<?> cls, String methodName) {
 		depth--;
 		System.out.println(indent() + cls.getName() + "." + methodName
-				+ " Leaving, index: " + index);
+				+ " Leaving, index: " + getIndex());
 	}
 
 	public void retrying(Class<?> cls, String methodName) {
 		System.out.println(indent(depth - 1) + cls.getName() + "." + methodName
-				+ " Retrying, was at index: " + index);
+				+ " Retrying, was at index: " + getIndex());
 	}
 
 	private static class ExpectationFrame {
@@ -92,7 +125,7 @@ public class ParsingContext {
 	private Deque<ExpectationFrame> expectationFrameStack = new ArrayDeque<>();
 
 	public void registerExpectation(String expectation) {
-		expectationFrameStack.peek().addExpectation(index, expectation);
+		expectationFrameStack.peek().addExpectation(getIndex(), expectation);
 	}
 
 	public void pushExpectationFrame() {

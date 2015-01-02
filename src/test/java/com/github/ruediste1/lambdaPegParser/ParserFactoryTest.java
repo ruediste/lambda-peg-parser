@@ -23,9 +23,9 @@ public class ParserFactoryTest {
 	 * Digit      ← [0-9]
 	 * </pre>
 	 */
-	private static class SimpleParser extends Parser {
+	private static class SimpleParser extends DefaultParser {
 
-		public SimpleParser(ParsingContext ctx) {
+		public SimpleParser(DefaultParsingContext ctx) {
 			super(ctx);
 		}
 
@@ -84,9 +84,9 @@ public class ParserFactoryTest {
 	 * Digit      ← [0-9]
 	 * </pre>
 	 */
-	private static class EvaluatingParser extends Parser {
+	private static class EvaluatingParser extends DefaultParser {
 
-		public EvaluatingParser(ParsingContext ctx) {
+		public EvaluatingParser(DefaultParsingContext ctx) {
 			super(ctx);
 		}
 
@@ -157,8 +157,8 @@ public class ParserFactoryTest {
 	 * @author ruedi
 	 *
 	 */
-	static class RecursiveParser extends Parser {
-		public RecursiveParser(ParsingContext ctx) {
+	static class RecursiveParser extends DefaultParser {
+		public RecursiveParser(DefaultParsingContext ctx) {
 			super(ctx);
 		}
 
@@ -210,9 +210,9 @@ public class ParserFactoryTest {
 		String input();
 	}
 
-	static class SmallRecursiveParser extends Parser implements
+	static class SmallRecursiveParser extends DefaultParser implements
 			ISmallRecursiveParser {
-		public SmallRecursiveParser(ParsingContext ctx) {
+		public SmallRecursiveParser(DefaultParsingContext ctx) {
 			super(ctx);
 		}
 
@@ -236,40 +236,35 @@ public class ParserFactoryTest {
 
 	@Test
 	public void simpleTest() {
-		ParsingContext ctx = new ParsingContext("2*3+1");
-		SimpleParser parser = ParserFactory.create(SimpleParser.class, ctx);
+		SimpleParser parser = ParserFactory.create(SimpleParser.class, "2*3+1");
 		assertEquals("((2 mul 3) plus (1))", parser.InputLine());
 	}
 
 	@Test
 	public void simpleTestEvaluation() {
-		ParsingContext ctx = new ParsingContext("2*3+1");
 		EvaluatingParser parser = ParserFactory.create(EvaluatingParser.class,
-				ctx);
+				"2*3+1");
 		assertEquals(7, parser.InputLine());
 	}
 
 	@Test
 	public void simpleTestEvaluationDiv() {
-		ParsingContext ctx = new ParsingContext("5*1/2+1");
 		EvaluatingParser parser = ParserFactory.create(EvaluatingParser.class,
-				ctx);
+				"5*1/2+1");
 		assertEquals(3, parser.InputLine());
 	}
 
 	@Test
 	public void recursive() {
-		ParsingContext ctx = new ParsingContext("1+2*3");
 		RecursiveParser parser = ParserFactory.create(RecursiveParser.class,
-				ctx);
+				"1+2*3");
 		assertEquals("(1)+((2)*(3))", parser.input());
 	}
 
 	@Test
 	public void recursiveError() {
-		ParsingContext ctx = new ParsingContext("1+2%3");
 		try {
-			ParserFactory.create(RecursiveParser.class, ctx).input();
+			ParserFactory.create(RecursiveParser.class, "1+2%3").input();
 		} catch (NoMatchException e) {
 			assertEquals(
 					"Error on line 1. Expected: product, End Of Input, sum\n"

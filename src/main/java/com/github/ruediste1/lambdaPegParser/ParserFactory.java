@@ -22,6 +22,11 @@ import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.MethodNode;
 import org.objectweb.asm.util.CheckClassAdapter;
 
+import com.google.common.reflect.TypeToken;
+
+/**
+ * Factory for instances of parser classes, derived from {@link Parser}.
+ */
 public class ParserFactory {
 
 	public static class WeavedClassLoader extends ClassLoader {
@@ -47,25 +52,59 @@ public class ParserFactory {
 		}
 	}
 
-	public static <T> T create(Class<? extends T> cls, Class<T> intrface,
-			String input) {
-		ParsingContext ctx = new ParsingContext(input);
-		return create(cls, intrface, ctx);
+	/**
+	 * Instantiate a weaved instance of a parser class and return it as instance
+	 * of an interface implemented by the parser. A fresh {@link ParsingContext}
+	 * is created with the supplied input.
+	 */
+	public static <T> T create(Class<? extends T> parserClass,
+			Class<T> intrface, String input) {
+		return create(parserClass, intrface,
+				createParsingContext(parserClass, input));
 	}
 
+	/**
+	 * Instantiate a weaved instance of a parser class and return it as instance
+	 * of an interface implemented by the parser.
+	 */
 	@SuppressWarnings("unchecked")
 	public static <T> T create(Class<? extends T> cls, Class<T> intrface,
-			ParsingContext ctx) {
+			ParsingContext<?> ctx) {
 		return (T) instantiateWeavedParser(ctx, cls.getName());
 	}
 
-	public static <T extends Parser> T create(Class<T> cls, String input) {
-		ParsingContext ctx = new ParsingContext(input);
+	/**
+	 * Instantiate a weaved instance of a parser class and return a proxy
+	 * delegating to the instantiated parser. A fresh {@link ParsingContext} is
+	 * created with the supplied input.
+	 */
+	public static <T extends Parser<?>> T create(Class<T> cls, String input) {
+		ParsingContext<?> ctx = createParsingContext(cls, input);
 		return create(cls, ctx);
 	}
 
+	private static ParsingContext<?> createParsingContext(Class<?> cls,
+			String input) {
+		ParsingContext<?> ctx;
+		try {
+			ctx = (ParsingContext<?>) getParsingContextType(cls)
+					.getConstructor(String.class).newInstance(input);
+		} catch (InstantiationException | IllegalAccessException
+				| IllegalArgumentException | InvocationTargetException
+				| NoSuchMethodException | SecurityException e) {
+			throw new RuntimeException(
+					"Error while instantiating parsing context", e);
+		}
+		return ctx;
+	}
+
+	/**
+	 * Instantiate a weaved instance of a parser class and return a proxy
+	 * delegating to the instantiated parser.
+	 */
 	@SuppressWarnings("unchecked")
-	public static <T extends Parser> T create(Class<T> cls, ParsingContext ctx) {
+	public static <T extends Parser<?>> T create(Class<T> cls,
+			ParsingContext<?> ctx) {
 		String parserClassNasme = cls.getName();
 		Object weavedParser = instantiateWeavedParser(ctx, parserClassNasme);
 
@@ -88,12 +127,12 @@ public class ParserFactory {
 			}
 		});
 
-		return (T) e.create(new Class[] { ParsingContext.class },
+		return (T) e.create(new Class[] { getParsingContextType(cls) },
 				new Object[] { ctx });
 
 	}
 
-	private static Object instantiateWeavedParser(ParsingContext ctx,
+	private static Object instantiateWeavedParser(ParsingContext<?> ctx,
 			String parserClassNasme) {
 
 		Class<?> weavedClass;
@@ -103,7 +142,7 @@ public class ParserFactory {
 					weaveClass(parserClassNasme)).loadClass(parserClassNasme);
 
 			Constructor<?> constructor = weavedClass
-					.getConstructor(ParsingContext.class);
+					.getConstructor(getParsingContextType(weavedClass));
 			constructor.setAccessible(true);
 			Object weavedParser = constructor.newInstance(ctx);
 			return weavedParser;
@@ -114,6 +153,11 @@ public class ParserFactory {
 			throw new RuntimeException(
 					"Error while weaving and instantiating parser class", e);
 		}
+	}
+
+	private static Class<?> getParsingContextType(Class<?> parserClass) {
+		return TypeToken.of(parserClass)
+				.resolveType(Parser.class.getTypeParameters()[0]).getRawType();
 	}
 
 	@SuppressWarnings("unchecked")

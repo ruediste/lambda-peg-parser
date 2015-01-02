@@ -3,9 +3,9 @@ package com.github.ruediste1.lambdaPegParser;
 /**
  * Prototype of the advice code used to transform the parser classes
  */
-public class PrototypeParser extends Parser {
+public class PrototypeParser extends Parser<ParsingContext<?>> {
 
-	public PrototypeParser(ParsingContext ctx) {
+	public PrototypeParser(ParsingContext<?> ctx) {
 		super(ctx);
 	}
 
@@ -27,7 +27,7 @@ public class PrototypeParser extends Parser {
 	}
 
 	public Object prototypeAdvice() {
-		ParsingContext ctx = getParsingContext();
+		ParsingContext<?> ctx = getParsingContext();
 
 		RuleInvocation pair = new RuleInvocation(getMethodNumber(), getArgs(),
 				ctx.getIndex());

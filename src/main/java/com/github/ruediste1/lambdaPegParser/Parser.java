@@ -5,20 +5,30 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.PrimitiveIterator.OfInt;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
+import com.github.ruediste1.lambdaPegParser.ParsingContext.StateSnapshot;
+
 /**
  * Base class for parser classes.
+ * 
+ * <p>
+ * To define a grammar, create a derived class. Each method in the derived class
+ * represents a grammar rule. The rule methods can return arbitrary results. The
+ * parser class can be instantiated via
+ * {@link ParserFactory#create(Class, String)}
+ * </p>
  */
-public class Parser {
+public class Parser<TCtx extends ParsingContext<?>> {
 
-	private final ParsingContext ctx;
+	private final TCtx ctx;
 
 	protected HashMap<RuleInvocation, RuleInvocation> currentMethods = new HashMap<>();
 
-	public Parser(ParsingContext ctx) {
+	public Parser(TCtx ctx) {
 		this.ctx = ctx;
 	}
 
@@ -90,8 +100,8 @@ public class Parser {
 	 * Matches the end of the input
 	 */
 	public final void EOI() {
-		if (!getParsingContext().isEOI()) {
-			throw new NoMatchException(getParsingContext(), "End Of Input");
+		if (!ctx.isEOI()) {
+			throw new NoMatchException(ctx, "End Of Input");
 		}
 	}
 
@@ -101,13 +111,13 @@ public class Parser {
 	@SafeVarargs
 	public final void FirstOf(Runnable... choices) {
 		for (Runnable choice : choices) {
-			int index = getParsingContext().getIndex();
+			StateSnapshot snapshot = ctx.snapshot();
 			try {
 				choice.run();
 				return;
 			} catch (NoMatchException e) {
-				// swallow, restore index
-				getParsingContext().setIndex(index);
+				// swallow, restore
+				snapshot.restore();
 			}
 		}
 		throw new NoMatchException();
@@ -120,12 +130,12 @@ public class Parser {
 	@SafeVarargs
 	public final <T> T FirstOf(Supplier<T>... choices) {
 		for (Supplier<T> choice : choices) {
-			int index = getParsingContext().getIndex();
+			StateSnapshot snapshot = ctx.snapshot();
 			try {
 				return choice.get();
 			} catch (NoMatchException e) {
-				// swallow, restore index
-				getParsingContext().setIndex(index);
+				// swallow, restore
+				snapshot.restore();
 			}
 		}
 		throw new NoMatchException();
@@ -137,12 +147,12 @@ public class Parser {
 	 */
 	public final void ZeroOrMore(Runnable term) {
 		while (true) {
-			int index = getParsingContext().getIndex();
+			StateSnapshot snapshot = ctx.snapshot();
 			try {
 				term.run();
 			} catch (NoMatchException e) {
-				// swallow, restore index, break loop
-				getParsingContext().setIndex(index);
+				// swallow, restore, break loop
+				snapshot.restore();
 				break;
 			}
 		}
@@ -155,49 +165,59 @@ public class Parser {
 	public final <T> Collection<T> ZeroOrMore(Supplier<T> term) {
 		ArrayList<T> parts = new ArrayList<>();
 		while (true) {
-			int index = getParsingContext().getIndex();
+			StateSnapshot snapshot = ctx.snapshot();
 			try {
 				parts.add(term.get());
 			} catch (NoMatchException e) {
-				// swallow, restore index, break loop
-				getParsingContext().setIndex(index);
+				// swallow, restore, break loop
+				snapshot.restore();
 				break;
 			}
 		}
 		return parts;
 	}
 
+	/**
+	 * Try to match the term. If it fails, succeed anyways
+	 */
 	public final void Optional(Runnable term) {
 		Optional(() -> {
 			term.run();
 			return null;
-		}, () -> null);
+		});
 	}
 
-	public final <T> T Optional(Supplier<T> term, T fallback) {
-		return Optional(term, () -> fallback);
-	}
-
-	public final <T> T Optional(Supplier<T> term, Supplier<T> fallback) {
-		int index = getParsingContext().getIndex();
+	/**
+	 * Try to match the term. If it fails, succeed anyways. If the term matches,
+	 * return the result, otherwise {@link java.util.Optional#empty()}
+	 */
+	public final <T> Optional<T> Optional(Supplier<T> term) {
+		StateSnapshot snapshot = ctx.snapshot();
 		try {
-			return term.get();
+			return Optional.of(term.get());
 		} catch (NoMatchException e) {
-			// swallow, restore index, break loop
-			getParsingContext().setIndex(index);
-			return fallback.get();
+			// swallow, restore, break loop
+			snapshot.restore();
+			return Optional.empty();
 		}
 	}
 
+	/**
+	 * Match one or more chars matching the criteria. If no matching character
+	 * is found, report the unmet expectation.
+	 */
 	public final String OneOrMoreChars(Predicate<Integer> criteria,
 			String expectation) {
 		String result = ZeroOrMoreChars(criteria);
 		if (result.isEmpty()) {
-			throw new NoMatchException(getParsingContext(), expectation);
+			throw new NoMatchException(ctx, expectation);
 		}
 		return result;
 	}
 
+	/**
+	 * Match zero or more chars matching the criteria.
+	 */
 	public final String ZeroOrMoreChars(Predicate<Integer> criteria) {
 		StringBuilder sb = new StringBuilder();
 		while (!ctx.isEOI()) {
@@ -213,17 +233,21 @@ public class Parser {
 		return sb.toString();
 	}
 
+	/**
+	 * Match the term one ore more times. Return the results of the matched
+	 * terms.
+	 */
 	public final <T> Collection<T> OneOrMore(Supplier<T> term)
 			throws NoMatchException {
 		ArrayList<T> parts = new ArrayList<>();
 		while (true) {
-			int index = ctx.getIndex();
+			StateSnapshot snapshot = ctx.snapshot();
 			try {
 				parts.add(term.get());
 
 			} catch (NoMatchException e) {
-				// swallow, restore index, break loop
-				ctx.setIndex(index);
+				// swallow, restore, break loop
+				snapshot.restore();
 				break;
 			}
 		}
@@ -233,16 +257,19 @@ public class Parser {
 		return parts;
 	}
 
+	/**
+	 * Match the term one or more times
+	 */
 	public final void OneOrMore(Runnable term) {
 		boolean found = false;
 		while (true) {
-			int index = ctx.getIndex();
+			StateSnapshot snapshot = ctx.snapshot();
 			try {
 				term.run();
 				found = true;
 			} catch (NoMatchException e) {
-				// swallow, restore index, break loop
-				ctx.setIndex(index);
+				// swallow, restore, break loop
+				snapshot.restore();
 				break;
 			}
 		}
@@ -272,13 +299,17 @@ public class Parser {
 	 * character, as one or two chars (for surrogate pairs)
 	 */
 	public final String AnyChar() {
-		return new String(Character.toChars(getParsingContext().next()));
+		return new String(Character.toChars(ctx.next()));
 	}
 
+	/**
+	 * Helper method matching a string. Returns false if the string could not be
+	 * found.
+	 */
 	private boolean matchString(String expected) {
 		OfInt it = expected.codePoints().iterator();
 		while (it.hasNext()) {
-			if (it.nextInt() != getParsingContext().next()) {
+			if (it.nextInt() != ctx.next()) {
 				return false;
 			}
 		}
@@ -290,7 +321,7 @@ public class Parser {
 	 */
 	public final String String(String expected) {
 		if (!matchString(expected))
-			throw new NoMatchException(getParsingContext(), expected);
+			throw new NoMatchException(ctx, expected);
 		else
 			return expected;
 	}
@@ -322,7 +353,7 @@ public class Parser {
 	 * expectation is reported.
 	 */
 	public final String Char(Predicate<Integer> predicate, String expectation) {
-		int cp = getParsingContext().next();
+		int cp = ctx.next();
 		if (predicate.test(cp)) {
 			return new String(Character.toChars(cp));
 		} else {
@@ -336,7 +367,7 @@ public class Parser {
 	 * containing only the matched character.
 	 */
 	public final String CharRange(int first, int last) {
-		int cp = getParsingContext().next();
+		int cp = ctx.next();
 		if (cp >= first && cp <= last) {
 			return new String(Character.toChars(cp));
 		} else {
@@ -349,10 +380,7 @@ public class Parser {
 		}
 	}
 
-	/**
-	 * Return the parsing context of this parser
-	 */
-	public final ParsingContext getParsingContext() {
+	public TCtx getParsingContext() {
 		return ctx;
 	}
 }
