@@ -307,21 +307,28 @@ public class Parser<TCtx extends ParsingContext<?>> {
 	 * found.
 	 */
 	private boolean matchString(String expected) {
-		OfInt it = expected.codePoints().iterator();
-		while (it.hasNext()) {
-			if (it.nextInt() != ctx.next()) {
-				return false;
+		try {
+			OfInt it = expected.codePoints().iterator();
+			while (it.hasNext() && ctx.hasNext()) {
+				if (it.nextInt() != ctx.next()) {
+					return false;
+				}
 			}
+
+			return !it.hasNext();
+		} catch (NoMatchException e) {
+			// swallow, return false
+			return false;
 		}
-		return true;
 	}
 
 	/**
 	 * Match a String. The matched string is returned.
 	 */
 	public final String String(String expected) {
+		int startIndex = ctx.getIndex();
 		if (!matchString(expected))
-			throw new NoMatchException(ctx, expected);
+			throw new NoMatchException(ctx, startIndex, expected);
 		else
 			return expected;
 	}
@@ -330,8 +337,9 @@ public class Parser<TCtx extends ParsingContext<?>> {
 	 * Match a String. The provided result is returned.
 	 */
 	public final <T> T String(String expected, T result) {
+		int startIndex = ctx.getIndex();
 		if (!matchString(expected))
-			throw new NoMatchException(ctx, expected);
+			throw new NoMatchException(ctx, startIndex, expected);
 		else
 			return result;
 	}
@@ -341,8 +349,9 @@ public class Parser<TCtx extends ParsingContext<?>> {
 	 * the input matches, use the result supplier to return the result
 	 */
 	public final <T> T String(String expected, Supplier<T> result) {
+		int startIndex = ctx.getIndex();
 		if (!matchString(expected))
-			throw new NoMatchException(ctx, "string <" + expected + ">");
+			throw new NoMatchException(ctx, startIndex, expected);
 		else
 			return result.get();
 	}
@@ -353,12 +362,14 @@ public class Parser<TCtx extends ParsingContext<?>> {
 	 * expectation is reported.
 	 */
 	public final String Char(Predicate<Integer> predicate, String expectation) {
-		int cp = ctx.next();
-		if (predicate.test(cp)) {
-			return new String(Character.toChars(cp));
-		} else {
-			throw new NoMatchException(ctx, expectation);
+		int startIndex = ctx.getIndex();
+		if (ctx.hasNext()) {
+			int cp = ctx.next();
+			if (predicate.test(cp)) {
+				return new String(Character.toChars(cp));
+			}
 		}
+		throw new NoMatchException(ctx, startIndex, expectation);
 
 	}
 
@@ -367,17 +378,19 @@ public class Parser<TCtx extends ParsingContext<?>> {
 	 * containing only the matched character.
 	 */
 	public final String CharRange(int first, int last) {
-		int cp = ctx.next();
-		if (cp >= first && cp <= last) {
-			return new String(Character.toChars(cp));
-		} else {
-			StringBuilder sb = new StringBuilder();
-			sb.append("character between ");
-			sb.appendCodePoint(cp);
-			sb.append(" and ");
-			sb.appendCodePoint(last);
-			throw new NoMatchException(ctx, sb.toString());
+		int startIndex = ctx.getIndex();
+		if (ctx.hasNext()) {
+			int cp = ctx.next();
+			if (cp >= first && cp <= last) {
+				return new String(Character.toChars(cp));
+			}
 		}
+		StringBuilder sb = new StringBuilder();
+		sb.append("character between ");
+		sb.appendCodePoint(first);
+		sb.append(" and ");
+		sb.appendCodePoint(last);
+		throw new NoMatchException(ctx, startIndex, sb.toString());
 	}
 
 	public TCtx getParsingContext() {

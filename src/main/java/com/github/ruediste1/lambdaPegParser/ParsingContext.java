@@ -9,9 +9,9 @@ import java.util.HashSet;
 import java.util.Set;
 
 public class ParsingContext<TState extends ParsingState<TState>> {
-	String content;
+	private String content;
 
-	TState state;
+	private TState state;
 
 	public ParsingContext(String content) {
 		this.content = content;
@@ -22,6 +22,8 @@ public class ParsingContext<TState extends ParsingState<TState>> {
 	public void setContent(String content) {
 		this.content = content;
 		state = createInitialState();
+		expectationFrameStack.clear();
+		expectationFrameStack.push(new ExpectationFrame());
 	}
 
 	@SuppressWarnings("unchecked")
@@ -38,8 +40,12 @@ public class ParsingContext<TState extends ParsingState<TState>> {
 		return result;
 	}
 
+	public boolean hasNext() {
+		return getIndex() < content.length();
+	}
+
 	public boolean isEOI() {
-		return getIndex() >= content.length();
+		return !hasNext();
 	}
 
 	public int getIndex() {
@@ -125,7 +131,11 @@ public class ParsingContext<TState extends ParsingState<TState>> {
 	private Deque<ExpectationFrame> expectationFrameStack = new ArrayDeque<>();
 
 	public void registerExpectation(String expectation) {
-		expectationFrameStack.peek().addExpectation(getIndex(), expectation);
+		registerExpectation(getIndex(), expectation);
+	}
+
+	public void registerExpectation(int index, String expectation) {
+		expectationFrameStack.peek().addExpectation(index, expectation);
 	}
 
 	public void pushExpectationFrame() {
