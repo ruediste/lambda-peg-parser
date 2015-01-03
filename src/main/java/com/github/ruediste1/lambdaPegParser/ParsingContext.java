@@ -22,9 +22,6 @@ import java.util.Set;
  * {@link StateSnapshot#restore()}. This allows backtracking.
  * </p>
  * 
- * <p>
- * 
- * </p>
  */
 public class ParsingContext<TState extends ParsingState<TState>> {
 	private String content;
@@ -35,10 +32,13 @@ public class ParsingContext<TState extends ParsingState<TState>> {
 		setContent(content);
 	}
 
+	public final Event<String> contentSetEvent = new Event<>();
+
 	public final void setContent(String content) {
 		this.content = content;
 		state = createInitialState();
 		expectationFrame = new ExpectationFrame();
+		contentSetEvent.fire(content);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -67,28 +67,41 @@ public class ParsingContext<TState extends ParsingState<TState>> {
 		return result;
 	}
 
+	/**
+	 * Return true if there are more codepoints in the input
+	 */
 	public boolean hasNext() {
 		return getIndex() < content.length();
 	}
 
-	public boolean isEOI() {
-		return !hasNext();
-	}
-
+	/**
+	 * Return the current input position
+	 */
 	public int getIndex() {
 		return state.getIndex();
 	}
 
-	public void setIndex(int index) {
-		state.setIndex(index);
-	}
-
+	/**
+	 * State Snapshots allow to capure a state via
+	 * {@link ParsingContext#snapshot()} and restore them later ( using
+	 * {@link #restore()} {@link #restoreClone()} )
+	 */
 	public interface StateSnapshot {
+
+		/**
+		 * Restore the snapshot. May be used once only
+		 */
 		void restore();
 
+		/**
+		 * restore a clone of the snapshot.
+		 */
 		void restoreClone();
 	}
 
+	/**
+	 * Implementation of {@link StateSnapshot}
+	 */
 	private class StateSnapshotImpl implements StateSnapshot {
 		TState snapshot;
 
@@ -98,60 +111,30 @@ public class ParsingContext<TState extends ParsingState<TState>> {
 
 		@Override
 		public void restore() {
+			checkSnapshot();
 			state = snapshot;
+			snapshot = null;
 		}
 
 		@Override
 		public void restoreClone() {
+			checkSnapshot();
 			state = snapshot.clone();
 		}
 
+		private void checkSnapshot() {
+			if (snapshot == null)
+				throw new RuntimeException(
+						"cannot restore after the first call to restore()");
+		}
+
 	}
 
+	/**
+	 * Create a snapshot of the current state
+	 */
 	public StateSnapshot snapshot() {
 		return new StateSnapshotImpl();
-	}
-
-	private int depth;
-
-	private String indent() {
-		return indent(depth);
-	}
-
-	private String indent(int depth) {
-		StringBuilder sb = new StringBuilder();
-		for (int i = 0; i < depth; i++) {
-			sb.append("  ");
-		}
-		return sb.toString();
-	}
-
-	public void entering(Class<?> cls, String methodName) {
-		System.out.println(indent() + cls.getName() + "." + methodName
-				+ " Entering, index: " + getIndex());
-		depth++;
-	}
-
-	public void failed(Class<?> cls, String methodName) {
-		depth--;
-		System.out.println(indent() + cls.getName() + "." + methodName
-				+ " Failed, index: " + getIndex());
-	}
-
-	public void leaving(Class<?> cls, String methodName) {
-		depth--;
-		System.out.println(indent() + cls.getName() + "." + methodName
-				+ " Leaving, index: " + getIndex());
-	}
-
-	public void retrying(Class<?> cls, String methodName) {
-		System.out.println(indent(depth - 1) + cls.getName() + "." + methodName
-				+ " Retrying, was at index: " + getIndex());
-	}
-
-	public void recursive(Class<?> cls, java.lang.String methodName) {
-		System.out.println(indent() + cls.getName() + "." + methodName
-				+ " recursive, advancing to: " + getIndex());
 	}
 
 	/**
@@ -200,47 +183,41 @@ public class ParsingContext<TState extends ParsingState<TState>> {
 		registerExpectation(getIndex(), expectation);
 	}
 
+	public static class Expectation {
+		public int index;
+		public String expectation;
+
+		public Expectation(int index, String expectation) {
+			super();
+			this.index = index;
+			this.expectation = expectation;
+		}
+
+	}
+
+	public final Event<Expectation> expectationRegistered = new Event<>();
+
 	/**
 	 * Register an expectation at the supplied index with the current
 	 * {@link ExpectationFrame}
 	 */
 	public void registerExpectation(int index, String expectation) {
 		expectationFrame.registerExpectation(index, expectation);
+		expectationRegistered.fire(new Expectation(index, expectation));
 	}
 
-	public String getErrorMessage() {
-		return getErrorDescription().toString();
-	}
-
+	/**
+	 * Return an error description according to the currently reported
+	 * expectations
+	 */
 	public ErrorDesciption getErrorDescription() {
 		ErrorDesciption result = new ErrorDesciption();
 		result.errorPosition = expectationFrame.index;
 		result.expectations = Collections
 				.unmodifiableSet(expectationFrame.expectations);
 
-		fillLineInfo(result, content);
+		result.fillLineInfo(content);
 		return result;
-	}
-
-	static void fillLineInfo(ErrorDesciption result, String content) {
-		int lineNr = 1;
-		int idx = 0;
-		while (true) {
-			int endIdx = content.indexOf('\n', idx);
-
-			if (result.errorPosition >= idx
-					&& (endIdx == -1 || endIdx + 1 > result.errorPosition)) {
-				result.errorLine = content.substring(idx,
-						endIdx == -1 ? content.length() : endIdx);
-				result.indexInErrorLine = result.errorPosition - idx;
-				result.errorLineNr = lineNr;
-				break;
-			}
-			if (endIdx == -1)
-				break;
-			idx = endIdx + 1;
-			lineNr++;
-		}
 	}
 
 	public ExpectationFrame getExpectationFrame() {
@@ -303,5 +280,67 @@ public class ParsingContext<TState extends ParsingState<TState>> {
 					+ expectations.stream().collect(joining(", ")) + "\n"
 					+ errorLine + "\n" + getErrorLineUnderline(' ', '^');
 		}
+
+		/**
+		 * set {@link #errorLine}, {@link #errorLineNr} and
+		 * {@link #indexInErrorLine} based on the {@code content} and the
+		 * {@link #errorPosition}
+		 */
+		public void fillLineInfo(String content) {
+			int lineNr = 1;
+			int idx = 0;
+			while (true) {
+				int endIdx = content.indexOf('\n', idx);
+
+				if (errorPosition >= idx
+						&& (endIdx == -1 || endIdx + 1 > errorPosition)) {
+					errorLine = content.substring(idx,
+							endIdx == -1 ? content.length() : endIdx);
+					indexInErrorLine = errorPosition - idx;
+					errorLineNr = lineNr;
+					break;
+				}
+				if (endIdx == -1)
+					break;
+				idx = endIdx + 1;
+				lineNr++;
+			}
+		}
 	}
+
+	public final Event<RuleLoggingInfo> recursiveEvent = new Event<>();
+
+	public void recursive(RuleLoggingInfo loggingInfo) {
+		loggingInfo.index = getIndex();
+		recursiveEvent.fire(loggingInfo);
+	}
+
+	public final Event<RuleLoggingInfo> enteringEvent = new Event<>();
+
+	public void entering(RuleLoggingInfo loggingInfo) {
+		loggingInfo.index = getIndex();
+		enteringEvent.fire(loggingInfo);
+	}
+
+	public final Event<RuleLoggingInfo> failedEvent = new Event<>();
+
+	public void failed(RuleLoggingInfo loggingInfo) {
+		loggingInfo.index = getIndex();
+		failedEvent.fire(loggingInfo);
+	}
+
+	public final Event<RuleLoggingInfo> leavingEvent = new Event<>();
+
+	public void leaving(RuleLoggingInfo loggingInfo) {
+		loggingInfo.index = getIndex();
+		leavingEvent.fire(loggingInfo);
+	}
+
+	public final Event<RuleLoggingInfo> retryingEvent = new Event<>();
+
+	public void retrying(RuleLoggingInfo loggingInfo) {
+		loggingInfo.index = getIndex();
+		retryingEvent.fire(loggingInfo);
+	}
+
 }

@@ -1,5 +1,7 @@
 package com.github.ruediste1.lambdaPegParser;
 
+import com.github.ruediste1.lambdaPegParser.ParsingContext.StateSnapshot;
+
 /**
  * Prototype of the advice code used to transform the parser classes
  */
@@ -22,6 +24,10 @@ public class PrototypeParser extends Parser<ParsingContext<?>> {
 		return null;
 	}
 
+	private static Class<?>[] getArgumentTypes() {
+		return null;
+	}
+
 	private static String getMethodName() {
 		return null;
 	}
@@ -29,34 +35,42 @@ public class PrototypeParser extends Parser<ParsingContext<?>> {
 	public Object prototypeAdvice() {
 		ParsingContext<?> ctx = getParsingContext();
 
-		RuleInvocation pair = new RuleInvocation(getMethodNumber(), getArgs(),
-				ctx.getIndex());
+		RuleLoggingInfo loggingInfo = new RuleLoggingInfo();
+		loggingInfo.arguments = getArgs();
+		loggingInfo.methodName = getMethodName();
+		loggingInfo.parserClass = getClass();
+		loggingInfo.argumentTypes = getArgumentTypes();
+
+		RuleInvocation invocation = new RuleInvocation(getMethodNumber(),
+				loggingInfo.arguments, ctx.getIndex());
 
 		// check for left recursions
 		{
-			RuleInvocation existing = currentMethods.get(pair);
+			RuleInvocation existing = currentMethods.get(invocation);
 			if (existing != null) {
 				// We ran into a left recursion.
 				// Mark the fact and return the seed if present
 				existing.recursive = true;
 				if (existing.seed != null) {
 					existing.seed.snapshot.restoreClone();
-					ctx.recursive(getClass(), getMethodName());
+					loggingInfo.result = Var.of(existing.seed.value);
+					ctx.recursive(loggingInfo);
 					return existing.seed.value;
 				} else {
-					ctx.recursive(getClass(), getMethodName());
+					ctx.recursive(loggingInfo);
 					throw new NoMatchException();
 				}
 			} else {
-				currentMethods.put(pair, pair);
+				currentMethods.put(invocation, invocation);
 			}
 		}
 
-		ctx.entering(getClass(), getMethodName());
+		ctx.entering(loggingInfo);
 		boolean failed = false;
 		try {
 			// first rule evaluation
 			int startIndex = ctx.getIndex();
+			StateSnapshot startSnapshot = ctx.snapshot();
 			int progress = startIndex;
 			Object result;
 
@@ -65,50 +79,50 @@ public class PrototypeParser extends Parser<ParsingContext<?>> {
 				try {
 					result = sampleRule();
 				} catch (NoMatchException e) {
-					if (pair.seed != null) {
+					if (invocation.seed != null) {
 						// this evaluation failed, break, use the
 						// last seed
-						pair.seed.snapshot.restore();
-						result = pair.seed.value;
+						invocation.seed.snapshot.restore();
+						result = invocation.seed.value;
 						break;
 					} else
 						throw e;
 				}
 
-				if (pair.recursive) {
-					// the invocation resulted in an recursion, grow the
-					// seed
+				if (invocation.recursive) {
+					// the invocation resulted in an recursion
 
-					if (pair.seed != null && progress >= ctx.getIndex()) {
+					if (invocation.seed != null && progress >= ctx.getIndex()) {
 						// the evaluation did not grow the seed, break,
 						// use last seed
-						pair.seed.snapshot.restore();
-						result = pair.seed.value;
+						invocation.seed.snapshot.restore();
+						result = invocation.seed.value;
 
 						break;
 					}
 
+					// recursion, grow the seed
 					progress = ctx.getIndex();
-					ctx.retrying(getClass(), getMethodName());
-					pair.recursive = false;
-					pair.seed = new Seed(result, ctx.snapshot());
-					ctx.setIndex(startIndex);
+					ctx.retrying(loggingInfo);
+					invocation.recursive = false;
+					invocation.seed = new Seed(result, ctx.snapshot());
+					startSnapshot.restoreClone();
 				} else {
 					// no recursion, we are done
 					break;
 				}
 
 			}
-
+			loggingInfo.result = Var.of(result);
 			return result;
 		} catch (Throwable t) {
-			ctx.failed(getClass(), getMethodName());
+			ctx.failed(loggingInfo);
 			failed = true;
 			throw t;
 		} finally {
-			currentMethods.remove(pair);
+			currentMethods.remove(invocation);
 			if (!failed) {
-				ctx.leaving(getClass(), getMethodName());
+				ctx.leaving(loggingInfo);
 			}
 		}
 	}

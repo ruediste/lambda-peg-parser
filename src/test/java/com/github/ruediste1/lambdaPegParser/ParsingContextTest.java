@@ -5,6 +5,7 @@ import static org.junit.Assert.assertEquals;
 import org.junit.Test;
 
 import com.github.ruediste1.lambdaPegParser.ParsingContext.ErrorDesciption;
+import com.github.ruediste1.lambdaPegParser.ParsingContext.StateSnapshot;
 
 public class ParsingContextTest {
 
@@ -24,40 +25,69 @@ public class ParsingContextTest {
 	public void testFillLineInfo() throws Exception {
 		ErrorDesciption desc = new ErrorDesciption();
 		desc.errorPosition = 0;
-		ParsingContext.fillLineInfo(desc, "ab\nc");
+		desc.fillLineInfo("ab\nc");
 		assertEquals("ab", desc.errorLine);
 		assertEquals(1, desc.errorLineNr);
 		assertEquals(0, desc.indexInErrorLine);
 
 		desc.errorPosition = 1;
-		ParsingContext.fillLineInfo(desc, "ab\ncd");
+		desc.fillLineInfo("ab\ncd");
 		assertEquals("ab", desc.errorLine);
 		assertEquals(1, desc.errorLineNr);
 		assertEquals(1, desc.indexInErrorLine);
 
 		desc.errorPosition = 2;
-		ParsingContext.fillLineInfo(desc, "ab\ncd");
+		desc.fillLineInfo("ab\ncd");
 		assertEquals("ab", desc.errorLine);
 		assertEquals(1, desc.errorLineNr);
 		assertEquals(2, desc.indexInErrorLine);
 
 		desc.errorPosition = 3;
-		ParsingContext.fillLineInfo(desc, "ab\ncd");
+		desc.fillLineInfo("ab\ncd");
 		assertEquals("cd", desc.errorLine);
 		assertEquals(2, desc.errorLineNr);
 		assertEquals(0, desc.indexInErrorLine);
 
 		desc.errorPosition = 4;
-		ParsingContext.fillLineInfo(desc, "ab\ncd");
+		desc.fillLineInfo("ab\ncd");
 		assertEquals("cd", desc.errorLine);
 		assertEquals(2, desc.errorLineNr);
 		assertEquals(1, desc.indexInErrorLine);
 
 		desc.errorPosition = 5;
-		ParsingContext.fillLineInfo(desc, "ab\ncd");
+		desc.fillLineInfo("ab\ncd");
 		assertEquals("cd", desc.errorLine);
 		assertEquals(2, desc.errorLineNr);
 		assertEquals(2, desc.indexInErrorLine);
 	}
 
+	@Test
+	public void snapshotRestore() {
+		DefaultParsingContext ctx = new DefaultParsingContext("foo");
+		StateSnapshot sn = ctx.snapshot();
+		sn.restore();
+	}
+
+	@Test(expected = RuntimeException.class)
+	public void snapshotRestoreTwice() {
+		DefaultParsingContext ctx = new DefaultParsingContext("foo");
+		StateSnapshot sn = ctx.snapshot();
+		sn.restore();
+		sn.restore();
+	}
+
+	@Test(expected = RuntimeException.class)
+	public void snapshotRestoreTwiceSecondTimeClone() {
+		DefaultParsingContext ctx = new DefaultParsingContext("foo");
+		StateSnapshot sn = ctx.snapshot();
+		sn.restore();
+		sn.restoreClone();
+	}
+
+	public void snapshotRestoreCloneTwice() {
+		DefaultParsingContext ctx = new DefaultParsingContext("foo");
+		StateSnapshot sn = ctx.snapshot();
+		sn.restoreClone();
+		sn.restoreClone();
+	}
 }

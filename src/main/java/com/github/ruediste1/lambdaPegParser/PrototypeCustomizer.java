@@ -29,6 +29,16 @@ public class PrototypeCustomizer extends GeneratorAdapter {
 				mv.visitLdcInsn(ruleNode.name);
 			} else if ("getArgs".equals(name)) {
 				loadArgArray();
+			} else if ("getArgumentTypes".equals(name)) {
+				Type[] argumentTypes = Type.getArgumentTypes(desc);
+				push(argumentTypes.length);
+				mv.visitTypeInsn(Opcodes.ANEWARRAY, "java/lang/Class");
+				for (int i = 0; i < argumentTypes.length; i++) {
+					dup();
+					push(i);
+					push(argumentTypes[i]);
+					mv.visitInsn(Opcodes.AASTORE);
+				}
 			} else
 				super.visitMethodInsn(opcode, owner, name, desc, itf);
 		} else

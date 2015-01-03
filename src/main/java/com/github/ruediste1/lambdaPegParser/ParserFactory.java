@@ -83,11 +83,17 @@ public class ParserFactory {
 		return create(cls, ctx);
 	}
 
-	private static ParsingContext<?> createParsingContext(Class<?> cls,
+	/**
+	 * Create a parsing context for the given parserClass and input. The
+	 * instantiated type is based on the generic type information of the parser
+	 * class. The context has to have a constructor with a single {@link String}
+	 * parameter.
+	 */
+	public static ParsingContext<?> createParsingContext(Class<?> parserClass,
 			String input) {
 		ParsingContext<?> ctx;
 		try {
-			ctx = (ParsingContext<?>) getParsingContextType(cls)
+			ctx = (ParsingContext<?>) getParsingContextType(parserClass)
 					.getConstructor(String.class).newInstance(input);
 		} catch (InstantiationException | IllegalAccessException
 				| IllegalArgumentException | InvocationTargetException

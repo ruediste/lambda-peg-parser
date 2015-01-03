@@ -22,7 +22,7 @@ public class NoMatchException extends Error {
 	public String getMessage() {
 		if (ctx == null)
 			return "unregistered error";
-		return ctx.getErrorMessage();
+		return ctx.getErrorDescription().toString();
 	}
 
 }

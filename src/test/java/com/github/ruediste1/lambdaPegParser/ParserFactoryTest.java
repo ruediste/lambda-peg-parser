@@ -234,37 +234,41 @@ public class ParserFactoryTest {
 		}
 	}
 
+	private <T extends Parser<?>> T create(Class<T> cls, String input) {
+		ParsingContext<?> ctx = ParserFactory.createParsingContext(cls, input);
+		T parser = ParserFactory.create(cls, ctx);
+		new Tracer(ctx, System.out);
+		return parser;
+	}
+
 	@Test
 	public void simpleTest() {
-		SimpleParser parser = ParserFactory.create(SimpleParser.class, "2*3+1");
+		SimpleParser parser = create(SimpleParser.class, "2*3+1");
 		assertEquals("((2 mul 3) plus (1))", parser.InputLine());
 	}
 
 	@Test
 	public void simpleTestEvaluation() {
-		EvaluatingParser parser = ParserFactory.create(EvaluatingParser.class,
-				"2*3+1");
+		EvaluatingParser parser = create(EvaluatingParser.class, "2*3+1");
 		assertEquals(7, parser.InputLine());
 	}
 
 	@Test
 	public void simpleTestEvaluationDiv() {
-		EvaluatingParser parser = ParserFactory.create(EvaluatingParser.class,
-				"5*1/2+1");
+		EvaluatingParser parser = create(EvaluatingParser.class, "5*1/2+1");
 		assertEquals(3, parser.InputLine());
 	}
 
 	@Test
 	public void recursive() {
-		RecursiveParser parser = ParserFactory.create(RecursiveParser.class,
-				"1+2*3");
+		RecursiveParser parser = create(RecursiveParser.class, "1+2*3");
 		assertEquals("(1)+((2)*(3))", parser.input());
 	}
 
 	@Test
 	public void recursiveError() {
 		try {
-			ParserFactory.create(RecursiveParser.class, "1+2%3").input();
+			create(RecursiveParser.class, "1+2%3").input();
 		} catch (NoMatchException e) {
 			assertEquals(
 					"Error on line 1. Expected: product, sum, End Of Input\n"

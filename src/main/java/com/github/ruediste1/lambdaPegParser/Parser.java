@@ -84,9 +84,8 @@ public class Parser<TCtx extends ParsingContext<?>> {
 				return false;
 			}
 			RuleInvocation other = (RuleInvocation) obj;
-			return Objects.equals(method, other.method)
-					&& Arrays.equals(args, other.args)
-					&& Objects.equals(position, other.position);
+			return method == other.method && Arrays.equals(args, other.args)
+					&& position == other.position;
 		}
 
 		public RuleInvocation(int method, Object[] args, int position) {
@@ -101,7 +100,7 @@ public class Parser<TCtx extends ParsingContext<?>> {
 	 * Matches the end of the input
 	 */
 	public final void EOI() {
-		if (!ctx.isEOI()) {
+		if (ctx.hasNext()) {
 			throw new NoMatchException(ctx, ctx.getIndex(), "End Of Input");
 		}
 	}
@@ -330,19 +329,14 @@ public class Parser<TCtx extends ParsingContext<?>> {
 	 * found.
 	 */
 	private boolean matchString(String expected) {
-		try {
-			OfInt it = expected.codePoints().iterator();
-			while (it.hasNext() && ctx.hasNext()) {
-				if (it.nextInt() != ctx.next()) {
-					return false;
-				}
+		OfInt it = expected.codePoints().iterator();
+		while (it.hasNext() && ctx.hasNext()) {
+			if (it.nextInt() != ctx.next()) {
+				return false;
 			}
-
-			return !it.hasNext();
-		} catch (NoMatchException e) {
-			// swallow, return false
-			return false;
 		}
+
+		return !it.hasNext();
 	}
 
 	/**
