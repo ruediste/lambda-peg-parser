@@ -173,7 +173,7 @@ public class ParserFactoryTest {
 		}
 
 		String product() {
-			return Try(
+			return Expect(
 					"product",
 					() -> "("
 							+ expr()
@@ -187,7 +187,7 @@ public class ParserFactoryTest {
 		}
 
 		String sum() {
-			return Try(
+			return Expect(
 					"sum",
 					() -> "("
 							+ expr()
@@ -230,7 +230,7 @@ public class ParserFactoryTest {
 		}
 
 		void whiteSpace() {
-			ZeroOrMoreChars(Character::isWhitespace);
+			ZeroOrMoreChars(Character::isWhitespace, "white space");
 		}
 	}
 
@@ -267,8 +267,8 @@ public class ParserFactoryTest {
 			ParserFactory.create(RecursiveParser.class, "1+2%3").input();
 		} catch (NoMatchException e) {
 			assertEquals(
-					"Error on line 1. Expected: product, End Of Input, sum\n"
-							+ "1+2%3\n" + "    ^", e.getMessage());
+					"Error on line 1. Expected: product, sum, End Of Input\n"
+							+ "1+2%3\n" + "   ^ ", e.getMessage());
 		}
 	}
 

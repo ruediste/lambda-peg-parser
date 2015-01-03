@@ -32,6 +32,18 @@ public class ParsingFailureTest {
 		String charRange() {
 			return CharRange('a', 'b');
 		}
+
+		String oneOrMoreChars() {
+			return OneOrMoreChars(Character::isLetter, "identifier");
+		}
+
+		String atomic() {
+			return Atomic("atomic", () -> String("a") + String("b"));
+		}
+
+		String expect() {
+			return Expect("expect", () -> String("a") + String("b"));
+		}
 	}
 
 	ParsingFailureParser parser;
@@ -72,17 +84,35 @@ public class ParsingFailureTest {
 		expectFailure("", parser::charRange, 0, "character between a and b");
 	}
 
+	@Test
+	public void oneOrMoreChars() {
+		expectFailure("1", parser::oneOrMoreChars, 0, "identifier");
+		expectFailure("", parser::oneOrMoreChars, 0, "identifier");
+	}
+
+	@Test
+	public void atomic() {
+		expectFailure("a", parser::atomic, 0, "atomic");
+		expectFailure("", parser::atomic, 0, "atomic");
+	}
+
+	@Test
+	public void expect() {
+		expectFailure("a", parser::expect, 1, "expect");
+		expectFailure("", parser::expect, 0, "expect");
+	}
+
 	private void expectFailure(String content, Runnable runnable,
 			int failureIndex, String... expectations) {
 		ctx.setContent(content);
 		try {
 			runnable.run();
-			fail();
+			fail("Expected failure");
 		} catch (NoMatchException e) {
 			assertEquals("failure index", failureIndex,
-					ctx.getExpectationsIndex());
+					ctx.getExpectationFrame().index);
 			assertEquals(new HashSet<String>(Arrays.asList(expectations)),
-					ctx.getExpectations());
+					ctx.getExpectationFrame().expectations);
 		}
 	}
 }

@@ -40,9 +40,11 @@ public class PrototypeParser extends Parser<ParsingContext<?>> {
 				// Mark the fact and return the seed if present
 				existing.recursive = true;
 				if (existing.seed != null) {
-					ctx.setIndex(existing.seed.index);
+					existing.seed.snapshot.restoreClone();
+					ctx.recursive(getClass(), getMethodName());
 					return existing.seed.value;
 				} else {
+					ctx.recursive(getClass(), getMethodName());
 					throw new NoMatchException();
 				}
 			} else {
@@ -66,7 +68,7 @@ public class PrototypeParser extends Parser<ParsingContext<?>> {
 					if (pair.seed != null) {
 						// this evaluation failed, break, use the
 						// last seed
-						ctx.setIndex(pair.seed.index);
+						pair.seed.snapshot.restore();
 						result = pair.seed.value;
 						break;
 					} else
@@ -80,8 +82,7 @@ public class PrototypeParser extends Parser<ParsingContext<?>> {
 					if (pair.seed != null && progress >= ctx.getIndex()) {
 						// the evaluation did not grow the seed, break,
 						// use last seed
-
-						ctx.setIndex(pair.seed.index);
+						pair.seed.snapshot.restore();
 						result = pair.seed.value;
 
 						break;
@@ -90,7 +91,7 @@ public class PrototypeParser extends Parser<ParsingContext<?>> {
 					progress = ctx.getIndex();
 					ctx.retrying(getClass(), getMethodName());
 					pair.recursive = false;
-					pair.seed = new Seed(result, progress);
+					pair.seed = new Seed(result, ctx.snapshot());
 					ctx.setIndex(startIndex);
 				} else {
 					// no recursion, we are done

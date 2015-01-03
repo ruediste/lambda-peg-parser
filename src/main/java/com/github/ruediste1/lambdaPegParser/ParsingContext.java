@@ -2,28 +2,43 @@ package com.github.ruediste1.lambdaPegParser;
 
 import static java.util.stream.Collectors.joining;
 
-import java.util.ArrayDeque;
 import java.util.Collections;
-import java.util.Deque;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Set;
 
+/**
+ * Context of a parsing run.
+ * 
+ * <p>
+ * {@link Parser}s have a reference to a {@link ParsingContext}. The context
+ * contains the input. If multiple parsers reference the same context instance,
+ * they can collaborate. This enables pluggalbe grammars.
+ * </p>
+ * 
+ * <p>
+ * The parsing state is encapsulated within a {@link ParsingState}. The current
+ * state can be saved using {@link #snapshot()} and restored using
+ * {@link StateSnapshot#restore()}. This allows backtracking.
+ * </p>
+ * 
+ * <p>
+ * 
+ * </p>
+ */
 public class ParsingContext<TState extends ParsingState<TState>> {
 	private String content;
 
 	private TState state;
 
 	public ParsingContext(String content) {
-		this.content = content;
-		state = createInitialState();
-		expectationFrameStack.push(new ExpectationFrame());
+		setContent(content);
 	}
 
-	public void setContent(String content) {
+	public final void setContent(String content) {
 		this.content = content;
 		state = createInitialState();
-		expectationFrameStack.clear();
-		expectationFrameStack.push(new ExpectationFrame());
+		expectationFrame = new ExpectationFrame();
 	}
 
 	@SuppressWarnings("unchecked")
@@ -31,12 +46,24 @@ public class ParsingContext<TState extends ParsingState<TState>> {
 		return (TState) new ParsingState<>();
 	}
 
+	/**
+	 * Return the next codepoint of the input without consuming it
+	 */
+	public int peek() {
+		if (!hasNext())
+			throw new NoMatchException();
+		return content.codePointAt(getIndex());
+	}
+
+	/**
+	 * Return the next codepoint of the input and consume it.
+	 */
 	public int next() {
-		if (isEOI()) {
-			throw new NoMatchException(this, "any character");
+		if (!hasNext()) {
+			throw new NoMatchException();
 		}
 		int result = content.codePointAt(getIndex());
-		setIndex(getIndex() + Character.charCount(result));
+		state.setIndex(getIndex() + Character.charCount(result));
 		return result;
 	}
 
@@ -58,6 +85,8 @@ public class ParsingContext<TState extends ParsingState<TState>> {
 
 	public interface StateSnapshot {
 		void restore();
+
+		void restoreClone();
 	}
 
 	private class StateSnapshotImpl implements StateSnapshot {
@@ -70,6 +99,11 @@ public class ParsingContext<TState extends ParsingState<TState>> {
 		@Override
 		public void restore() {
 			state = snapshot;
+		}
+
+		@Override
+		public void restoreClone() {
+			state = snapshot.clone();
 		}
 
 	}
@@ -115,70 +149,74 @@ public class ParsingContext<TState extends ParsingState<TState>> {
 				+ " Retrying, was at index: " + getIndex());
 	}
 
-	private static class ExpectationFrame {
-		int index;
-		Set<String> expectations = new HashSet<>();
+	public void recursive(Class<?> cls, java.lang.String methodName) {
+		System.out.println(indent() + cls.getName() + "." + methodName
+				+ " recursive, advancing to: " + getIndex());
+	}
 
-		public void addExpectation(int index, String expectation) {
+	/**
+	 * Collects expectations. Used for error reporting
+	 */
+	public static class ExpectationFrame {
+		public int index;
+		public Set<String> expectations = new LinkedHashSet<>();
+
+		/**
+		 * Register an expectation. If the supplied index lies farther to the
+		 * right than {@link #index}, the expectations are cleared and the index
+		 * is advanced. The expectation is only added to the expectation if the
+		 * supplied index does NOT lie to the left of {@link #index}.
+		 */
+		public void registerExpectation(int index, String expectation) {
 			if (this.index < index) {
 				this.index = index;
 				expectations.clear();
 			}
-			expectations.add(expectation);
+			if (this.index == index)
+				expectations.add(expectation);
+		}
+
+		/**
+		 * Merge two frames. The one farther to the right takes precedence. If
+		 * both are at the same position, the expectations are merged.
+		 */
+		public void merge(ExpectationFrame other) {
+			if (index == other.index) {
+				expectations.addAll(other.expectations);
+			}
+			if (index < other.index) {
+				expectations = new HashSet<>(other.expectations);
+			}
 		}
 	}
 
-	private Deque<ExpectationFrame> expectationFrameStack = new ArrayDeque<>();
+	private ExpectationFrame expectationFrame;
 
+	/**
+	 * Register an expectation at the current index with the current
+	 * {@link ExpectationFrame}
+	 */
 	public void registerExpectation(String expectation) {
 		registerExpectation(getIndex(), expectation);
 	}
 
+	/**
+	 * Register an expectation at the supplied index with the current
+	 * {@link ExpectationFrame}
+	 */
 	public void registerExpectation(int index, String expectation) {
-		expectationFrameStack.peek().addExpectation(index, expectation);
-	}
-
-	public void pushExpectationFrame() {
-		expectationFrameStack.push(new ExpectationFrame());
-	}
-
-	public void popExpectationFrame(int index, String replacementExpectation) {
-		ExpectationFrame frame = expectationFrameStack.pop();
-		if (frame.index > getExpectationsIndex()) {
-			// the frame to pop is farther to the right, use it's expectations
-			expectationFrameStack.peek().expectations = frame.expectations;
-		} else if (frame.index == getExpectationsIndex()) {
-			// the frame is at the same position as the underlying frame
-			if (index == frame.index)
-				// replace all expectations of frame with the
-				// replacementExpectation
-				expectationFrameStack.peek().expectations
-						.add(replacementExpectation);
-			else
-				// merge frames
-				expectationFrameStack.peek().expectations
-						.addAll(frame.expectations);
-
-		}
+		expectationFrame.registerExpectation(index, expectation);
 	}
 
 	public String getErrorMessage() {
 		return getErrorDescription().toString();
 	}
 
-	public int getExpectationsIndex() {
-		return expectationFrameStack.peek().index;
-	}
-
-	public Set<String> getExpectations() {
-		return Collections
-				.unmodifiableSet(expectationFrameStack.peek().expectations);
-	}
-
 	public ErrorDesciption getErrorDescription() {
 		ErrorDesciption result = new ErrorDesciption();
-		result.errorPosition = expectationFrameStack.peek().index;
-		result.expectations = getExpectations();
+		result.errorPosition = expectationFrame.index;
+		result.expectations = Collections
+				.unmodifiableSet(expectationFrame.expectations);
 
 		fillLineInfo(result, content);
 		return result;
@@ -203,6 +241,19 @@ public class ParsingContext<TState extends ParsingState<TState>> {
 			idx = endIdx + 1;
 			lineNr++;
 		}
+	}
+
+	public ExpectationFrame getExpectationFrame() {
+		return expectationFrame;
+	}
+
+	public void setExpectationFrame(ExpectationFrame expectationFrame) {
+		this.expectationFrame = expectationFrame;
+	}
+
+	public ExpectationFrame setNewExpectationFrame() {
+		this.expectationFrame = new ExpectationFrame();
+		return expectationFrame;
 	}
 
 	public static class ErrorDesciption {

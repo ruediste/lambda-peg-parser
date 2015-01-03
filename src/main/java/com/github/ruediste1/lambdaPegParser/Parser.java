@@ -10,6 +10,7 @@ import java.util.PrimitiveIterator.OfInt;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
+import com.github.ruediste1.lambdaPegParser.ParsingContext.ExpectationFrame;
 import com.github.ruediste1.lambdaPegParser.ParsingContext.StateSnapshot;
 
 /**
@@ -37,12 +38,12 @@ public class Parser<TCtx extends ParsingContext<?>> {
 	 */
 	protected static class Seed {
 		public Object value;
-		public int index;
+		public StateSnapshot snapshot;
 
-		public Seed(Object value, int index) {
+		public Seed(Object value, StateSnapshot snapshot) {
 			super();
 			this.value = value;
-			this.index = index;
+			this.snapshot = snapshot;
 		}
 
 	}
@@ -101,7 +102,7 @@ public class Parser<TCtx extends ParsingContext<?>> {
 	 */
 	public final void EOI() {
 		if (!ctx.isEOI()) {
-			throw new NoMatchException(ctx, "End Of Input");
+			throw new NoMatchException(ctx, ctx.getIndex(), "End Of Input");
 		}
 	}
 
@@ -208,9 +209,9 @@ public class Parser<TCtx extends ParsingContext<?>> {
 	 */
 	public final String OneOrMoreChars(Predicate<Integer> criteria,
 			String expectation) {
-		String result = ZeroOrMoreChars(criteria);
+		String result = ZeroOrMoreChars(criteria, expectation);
 		if (result.isEmpty()) {
-			throw new NoMatchException(ctx, expectation);
+			throw new NoMatchException();
 		}
 		return result;
 	}
@@ -218,15 +219,14 @@ public class Parser<TCtx extends ParsingContext<?>> {
 	/**
 	 * Match zero or more chars matching the criteria.
 	 */
-	public final String ZeroOrMoreChars(Predicate<Integer> criteria) {
+	public final String ZeroOrMoreChars(Predicate<Integer> criteria,
+			String expectation) {
 		StringBuilder sb = new StringBuilder();
-		while (!ctx.isEOI()) {
-			int index = ctx.getIndex();
-			int next = ctx.next();
-			if (criteria.test(next)) {
-				sb.appendCodePoint(next);
+		while (true) {
+			if (ctx.hasNext() && criteria.test(ctx.peek())) {
+				sb.appendCodePoint(ctx.next());
 			} else {
-				ctx.setIndex(index);
+				ctx.registerExpectation(expectation);
 				break;
 			}
 		}
@@ -237,14 +237,12 @@ public class Parser<TCtx extends ParsingContext<?>> {
 	 * Match the term one ore more times. Return the results of the matched
 	 * terms.
 	 */
-	public final <T> Collection<T> OneOrMore(Supplier<T> term)
-			throws NoMatchException {
+	public final <T> Collection<T> OneOrMore(Supplier<T> term) {
 		ArrayList<T> parts = new ArrayList<>();
 		while (true) {
 			StateSnapshot snapshot = ctx.snapshot();
 			try {
 				parts.add(term.get());
-
 			} catch (NoMatchException e) {
 				// swallow, restore, break loop
 				snapshot.restore();
@@ -279,18 +277,41 @@ public class Parser<TCtx extends ParsingContext<?>> {
 	}
 
 	/**
-	 * Try matching the supplied term. If the term can not successfully be
-	 * parsed and it does not consume any input, all expectations generated
-	 * while matching the term are replaced with the single specified
-	 * expectation.
+	 * Match the supplied term. All expectations generated while matching the
+	 * term are dropped. If matching the term fails, the single specified
+	 * expectation is registered as expected at the input position at the
+	 * beginning of the matching attempt.
 	 */
-	public final <T> T Try(String expectation, Supplier<T> term) {
+	public final <T> T Atomic(String expectation, Supplier<T> term) {
 		int startIdx = ctx.getIndex();
-		ctx.pushExpectationFrame();
+		ExpectationFrame oldFrame = ctx.getExpectationFrame();
+		ctx.setNewExpectationFrame();
 		try {
 			return term.get();
+		} catch (NoMatchException e) {
+			oldFrame.registerExpectation(startIdx, expectation);
+			throw e;
 		} finally {
-			ctx.popExpectationFrame(startIdx, expectation);
+			ctx.setExpectationFrame(oldFrame);
+		}
+	}
+
+	/**
+	 * Match the supplied term. All expectations generated while matching the
+	 * term are dropped. If matching the term fails, the single specified
+	 * expectation is registered as expected at the input position farthest to
+	 * the right which has been reached.
+	 */
+	public final <T> T Expect(String expectation, Supplier<T> term) {
+		ExpectationFrame oldFrame = ctx.getExpectationFrame();
+		ExpectationFrame newFrame = ctx.setNewExpectationFrame();
+		try {
+			return term.get();
+		} catch (NoMatchException e) {
+			oldFrame.registerExpectation(newFrame.index, expectation);
+			throw e;
+		} finally {
+			ctx.setExpectationFrame(oldFrame);
 		}
 	}
 
@@ -299,6 +320,8 @@ public class Parser<TCtx extends ParsingContext<?>> {
 	 * character, as one or two chars (for surrogate pairs)
 	 */
 	public final String AnyChar() {
+		if (!ctx.hasNext())
+			throw new NoMatchException(ctx, "any character");
 		return new String(Character.toChars(ctx.next()));
 	}
 
