@@ -11,27 +11,45 @@ public class PrototypeParser extends Parser<ParsingContext<?>> {
 		super(ctx);
 	}
 
+	/**
+	 * call will be replaced with the inlined rule method
+	 */
 	public Object sampleRule() {
 		return null;
-
 	}
 
+	/**
+	 * call will be replaced
+	 */
 	private static int getMethodNumber() {
 		return 1;
 	}
 
+	/**
+	 * call will be replaced
+	 */
 	private static Object[] getArgs() {
 		return null;
 	}
 
+	/**
+	 * call will be replaced
+	 */
 	private static Class<?>[] getArgumentTypes() {
 		return null;
 	}
 
+	/**
+	 * call will be replaced
+	 */
 	private static String getMethodName() {
 		return null;
 	}
 
+	/**
+	 * The bytecode of this method is placed in the method bodies of the rule
+	 * methods, around the code of the original rule method.
+	 */
 	public Object prototypeAdvice() {
 		ParsingContext<?> ctx = getParsingContext();
 

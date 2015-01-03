@@ -1,4 +1,4 @@
-package com.github.ruediste1.lambdaPegParser;
+package com.github.ruediste1.lambdaPegParser.weaving;
 
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;

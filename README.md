@@ -71,5 +71,10 @@ An adaption of the algorithm outlined in ["Packrat Parsers Can Support Left Recu
 
 To implement this algorithm it is necessary to add an around advice to the rule methods. This could easily be accomplished using a cglib. However, the resulting stack traces contain many artificial entries and debugging experience is far from perfect. Therefore, before instantiating a parser class, the class is transformed using [ASM](http://asm.ow2.org/) to contain the advice in their methods and loaded using a separate class loader. The resulting instance can either be accessed through an interface, or a proxy of the parser class is created which forwards to the real parser instance.
 
+The around advice is contained in **PrototypeParser**. The bytecode is copied form there to each rule method.
+
 ## Pluggable Grammars
-Plugging different grammars is really easy. Multiple parsers using the same **ParsingContext** can freely cooperate. Just instantiate the parsers using a single context and register them with each other. 
+Plugging different grammars is really easy. Multiple parsers using the same **ParsingContext** can freely cooperate. Just instantiate the parsers using a single context and register them with each other.
+
+## Extensibility
+The **ParsingContext** and the **ParsingState** have been prepared to be subclassed. This should allow for a wide range of improvements. 

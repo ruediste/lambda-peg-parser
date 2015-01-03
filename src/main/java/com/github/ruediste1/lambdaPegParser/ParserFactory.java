@@ -2,7 +2,6 @@ package com.github.ruediste1.lambdaPegParser;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.PrintWriter;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -20,8 +19,10 @@ import org.objectweb.asm.commons.RemappingMethodAdapter;
 import org.objectweb.asm.commons.SimpleRemapper;
 import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.MethodNode;
-import org.objectweb.asm.util.CheckClassAdapter;
 
+import com.github.ruediste1.lambdaPegParser.weaving.MethodCallInliner;
+import com.github.ruediste1.lambdaPegParser.weaving.MinMaxLineMethodAdapter;
+import com.github.ruediste1.lambdaPegParser.weaving.PrototypeCustomizer;
 import com.google.common.reflect.TypeToken;
 
 /**
@@ -200,6 +201,7 @@ public class ParserFactory {
 					Opcodes.ASM5, null);
 			ruleNode.accept(minMaxLineMethodAdapter);
 
+			// prepare the new method node
 			MethodNode newNode;
 			{
 				String[] exceptions = ((List<String>) ruleNode.exceptions)
@@ -209,19 +211,25 @@ public class ParserFactory {
 						ruleNode.desc, ruleNode.signature, exceptions);
 			}
 
+			// replace remaining references to PrototypeParser
 			RemappingMethodAdapter remapper = new RemappingMethodAdapter(
 					ruleNode.access, ruleNode.desc, newNode,
 					new SimpleRemapper(PrototypeParser.class.getName().replace(
 							'.', '/'), parserClassName.replace('.', '/')));
 
+			// inline the call to the sampleRule method, replace it with the
+			// original rule method
 			MethodCallInliner inliner = new MethodCallInliner(remapper,
 					ruleNode, minMaxLineMethodAdapter);
 
+			// customize the code found in the prototype
 			PrototypeCustomizer prototypeCustomizer = new PrototypeCustomizer(
 					inliner, ruleNode, i);
 
+			// trigger the transformation
 			prototype.accept(prototypeCustomizer);
 
+			// replace the existing method
 			cn.methods.set(i, newNode);
 		}
 
@@ -236,8 +244,8 @@ public class ParserFactory {
 		byte[] b = cw.toByteArray();
 
 		// verify weaved byte code
-		PrintWriter pw = new PrintWriter(System.out);
-		CheckClassAdapter.verify(new ClassReader(b), false, pw);
+		// PrintWriter pw = new PrintWriter(System.out);
+		// CheckClassAdapter.verify(new ClassReader(b), false, pw);
 
 		return b;
 	}
