@@ -60,9 +60,9 @@ The following code snippet uses the grammar above to parse the input "1+2":
 
 ## Error Reporting
 Error reporting uses the farthest failure heuristic discussed in ["Packrat Parsing: a Practical Linear-Time Algorithm with Backtracking" by Bryan Ford](http://bford.info/pub/lang/thesis.pdf) section "3.2.4
-Error Handling", which basically reports all unmet expectations which occur at the farthest input position reached by the parser. In addition, the **Try()** method replaces all expectations with a single specified expectation, if no progress is achieved while parsing the supplied term.
+Error Handling", which basically reports all unmet expectations which occur at the farthest input position reached by the parser. 
 
-To implement the **Try()** method the so-called expectation frame stack is used. The expectations are always collected in the current frame. Using the **Try** method, a new expectation frame is started. If parsing the nested term fails and no progress has been achieved, the current frame is dropped and a single expectation is added to the frame below, containing just the expectation noted in the **Try()** call.
+In addition, the **Atomic()** method replaces all expectations of the sub term with a single specified expectation, reported at the beginning of the matching attempt. **Expect()** is the same as **Atomic()**, except that the errors are reported at the position farthest to the right the parser has reached.
 
 ## Implementation
 Due to the heavy use of lambda expressions, the rule methods implement a recursive descent parser almost as-is. The only missing piece is the support for left recursion. 
