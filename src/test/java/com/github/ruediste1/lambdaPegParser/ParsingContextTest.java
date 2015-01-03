@@ -59,6 +59,13 @@ public class ParsingContextTest {
 		assertEquals("cd", desc.errorLine);
 		assertEquals(2, desc.errorLineNr);
 		assertEquals(2, desc.indexInErrorLine);
+
+		desc.errorPosition = 1;
+		desc.fillLineInfo("漢字");
+		assertEquals("漢字", desc.errorLine);
+		assertEquals(1, desc.errorLineNr);
+		assertEquals(1, desc.indexInErrorLine);
+		assertEquals("-*", desc.getErrorLineUnderline('-', '*'));
 	}
 
 	@Test
