@@ -211,12 +211,9 @@ public class ParsingContext<TState extends ParsingState<TState>> {
 	 * expectations
 	 */
 	public ErrorDesciption getErrorDescription() {
-		ErrorDesciption result = new ErrorDesciption();
-		result.errorPosition = expectationFrame.index;
-		result.expectations = Collections
-				.unmodifiableSet(expectationFrame.expectations);
-
-		result.fillLineInfo(content);
+		ErrorDesciption result = new ErrorDesciption(
+				Collections.unmodifiableSet(expectationFrame.expectations),
+				content, expectationFrame.index);
 		return result;
 	}
 
@@ -237,75 +234,24 @@ public class ParsingContext<TState extends ParsingState<TState>> {
 		public int errorPosition;
 		public Set<String> expectations;
 
-		/**
-		 * Line number the error occured in. First line has count 1
-		 */
-		public int errorLineNr;
+		public LineInfo errorLineInfo;
 
-		/**
-		 * Input line the error occured in
-		 */
-		public String errorLine;
-
-		/**
-		 * index of the error in the error line
-		 */
-		public int indexInErrorLine;
-
-		/**
-		 * Return a line suitable to underline the error line
-		 * 
-		 * @param spacerCP
-		 *            codePoint of the caracter to use as space
-		 * @param positionMarkerCP
-		 *            codePoint of the caracter to use as marker
-		 */
-		public String getErrorLineUnderline(int spacerCP, int positionMarkerCP) {
-			StringBuilder sb = new StringBuilder();
-			int i = 0;
-			for (; i < indexInErrorLine; i++) {
-				sb.appendCodePoint(spacerCP);
-			}
-
-			sb.appendCodePoint(positionMarkerCP);
-			for (; i < errorLine.length() - 1; i++) {
-				sb.appendCodePoint(spacerCP);
-			}
-			return sb.toString();
+		public ErrorDesciption(Set<String> expectations, String content,
+				int errorPosition) {
+			this.expectations = expectations;
+			this.errorPosition = errorPosition;
+			errorLineInfo = new LineInfo(content, errorPosition);
 		}
 
 		@Override
 		public String toString() {
-			return "Error on line " + errorLineNr + ". Expected: "
+			return "Error on line " + errorLineInfo.getLineNr()
+					+ ". Expected: "
 					+ expectations.stream().collect(joining(", ")) + "\n"
-					+ errorLine + "\n" + getErrorLineUnderline(' ', '^');
+					+ errorLineInfo.getLine() + "\n"
+					+ errorLineInfo.getErrorLineUnderline(' ', '^');
 		}
 
-		/**
-		 * set {@link #errorLine}, {@link #errorLineNr} and
-		 * {@link #indexInErrorLine} based on the {@code content} and the
-		 * {@link #errorPosition}
-		 */
-		public void fillLineInfo(String content) {
-			int lineNr = 1;
-			int idx = 0;
-			while (true) {
-				int endIdx = content.indexOf('\n', idx);
-
-				if (errorPosition >= idx
-						&& (endIdx == -1 || endIdx + 1 > errorPosition)) {
-					errorLine = content.substring(idx,
-							endIdx == -1 ? content.length() : endIdx);
-					indexInErrorLine = errorPosition - idx;
-					errorLineNr = lineNr;
-					break;
-				}
-				if (endIdx == -1)
-					break;
-				idx = endIdx + 1;
-				lineNr++;
-			}
-		}
 	}
 
 	public final Event<RuleLoggingInfo> recursiveEvent = new Event<>();
@@ -343,4 +289,10 @@ public class ParsingContext<TState extends ParsingState<TState>> {
 		retryingEvent.fire(loggingInfo);
 	}
 
+	@Override
+	public String toString() {
+		LineInfo info = new LineInfo(content, getIndex());
+		return getClass().getSimpleName() + "Line " + info.getLineNr() + "\n"
+				+ info.getLine() + "\n" + info.getErrorLineUnderline(' ', '*');
+	}
 }
