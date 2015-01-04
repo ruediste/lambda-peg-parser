@@ -57,6 +57,8 @@ The following code snippet uses the grammar above to parse the input "1+2":
 	int result = parser.input();
 	// result is now 3
 
+## Installation
+There are no releases or binaries yet. The project is a standard maven project. Clone and build/install.
 
 ## Error Reporting
 Error reporting uses the farthest failure heuristic discussed in ["Packrat Parsing: a Practical Linear-Time Algorithm with Backtracking" by Bryan Ford](http://bford.info/pub/lang/thesis.pdf) section "3.2.4

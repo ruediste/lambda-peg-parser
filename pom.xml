@@ -1,8 +1,8 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
-	<groupId>com.github.ruediste1.lambdaPegParser</groupId>
-	<artifactId>parser</artifactId>
+	<groupId>com.github.ruediste1</groupId>
+	<artifactId>lambdaPegParser</artifactId>
 	<packaging>jar</packaging>
 	<name>Lamda Parsing Expression Grammar Parser</name>
 	<url> https://github.com/ruediste1/lambda-peg-parser</url>

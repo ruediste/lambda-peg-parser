@@ -106,11 +106,14 @@ public class Parser<TCtx extends ParsingContext<?>> {
 	}
 
 	/**
-	 * Tries each choice in turn until a choice can successfully be matched
+	 * Tries each choice in turn until a choice can successfully be matched. If
+	 * a choice is null, it is ignored.
 	 */
 	@SafeVarargs
 	public final void FirstOf(Runnable... choices) {
 		for (Runnable choice : choices) {
+			if (choice == null)
+				continue;
 			StateSnapshot snapshot = ctx.snapshot();
 			try {
 				choice.run();
@@ -125,11 +128,13 @@ public class Parser<TCtx extends ParsingContext<?>> {
 
 	/**
 	 * Tries each choice in turn until a choice can successfully be matched and
-	 * returns it's value
+	 * returns it's value. If a choice is null, it is ignored.
 	 */
 	@SafeVarargs
 	public final <T> T FirstOf(Supplier<T>... choices) {
 		for (Supplier<T> choice : choices) {
+			if (choice == null)
+				continue;
 			StateSnapshot snapshot = ctx.snapshot();
 			try {
 				return choice.get();

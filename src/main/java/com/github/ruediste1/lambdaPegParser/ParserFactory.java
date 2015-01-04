@@ -2,9 +2,11 @@ package com.github.ruediste1.lambdaPegParser;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.PrintWriter;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 
@@ -15,11 +17,14 @@ import net.sf.cglib.proxy.MethodProxy;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.RemappingMethodAdapter;
 import org.objectweb.asm.commons.SimpleRemapper;
 import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.MethodNode;
+import org.objectweb.asm.util.CheckClassAdapter;
 
+import com.github.ruediste1.lambdaPegParser.weaving.LocalVariableShifter;
 import com.github.ruediste1.lambdaPegParser.weaving.MethodCallInliner;
 import com.github.ruediste1.lambdaPegParser.weaving.MinMaxLineMethodAdapter;
 import com.github.ruediste1.lambdaPegParser.weaving.PrototypeCustomizer;
@@ -123,14 +128,40 @@ public class ParserFactory {
 			@Override
 			public Object intercept(Object obj, Method method, Object[] args,
 					MethodProxy proxy) throws Throwable {
-				Method m = weavedParser.getClass().getDeclaredMethod(
+				Method m = findMethod(weavedParser.getClass().getMethods(),
 						method.getName(), method.getParameterTypes());
+				if (m == null) {
+					m = findMethod(weavedParser.getClass(), method.getName(),
+							method.getParameterTypes());
+				}
 				m.setAccessible(true);
 				try {
 					return m.invoke(weavedParser, args);
 				} catch (InvocationTargetException e) {
 					throw e.getCause();
 				}
+			}
+
+			private Method findMethod(Class<?> cls, String methodName,
+					Class<?>[] parameterTypes) throws NoSuchMethodException,
+					SecurityException {
+				if (cls == null)
+					return null;
+				Method m = findMethod(cls.getDeclaredMethods(), methodName,
+						parameterTypes);
+				return m == null ? findMethod(cls.getSuperclass(), methodName,
+						parameterTypes) : m;
+			}
+
+			private Method findMethod(Method[] candidates, String methodName,
+					Class<?>[] parameterTypes) {
+				for (Method m : candidates) {
+					if (methodName.equals(m.getName())
+							&& Arrays.equals(parameterTypes,
+									m.getParameterTypes()))
+						return m;
+				}
+				return null;
 			}
 		});
 
@@ -226,8 +257,15 @@ public class ParserFactory {
 			PrototypeCustomizer prototypeCustomizer = new PrototypeCustomizer(
 					inliner, ruleNode, i);
 
+			// shift local variables to make space for parameters of the rule
+			// method
+			LocalVariableShifter shifter = new LocalVariableShifter(
+					Type.getArgumentTypes(ruleNode.desc).length,
+					prototype.access, prototype.desc, prototypeCustomizer);
+
 			// trigger the transformation
-			prototype.accept(prototypeCustomizer);
+			prototype.instructions.resetLabels();
+			prototype.accept(shifter);
 
 			// replace the existing method
 			cn.methods.set(i, newNode);
@@ -235,7 +273,8 @@ public class ParserFactory {
 
 		// dump weaved byte code
 		// cn.accept(new TraceClassVisitor(null, new Textifier(), new
-		// PrintWriter( System.out)));
+		// PrintWriter(
+		// System.out)));
 
 		ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS
 				+ ClassWriter.COMPUTE_FRAMES);
@@ -244,8 +283,8 @@ public class ParserFactory {
 		byte[] b = cw.toByteArray();
 
 		// verify weaved byte code
-		// PrintWriter pw = new PrintWriter(System.out);
-		// CheckClassAdapter.verify(new ClassReader(b), false, pw);
+		PrintWriter pw = new PrintWriter(System.out);
+		CheckClassAdapter.verify(new ClassReader(b), false, pw);
 
 		return b;
 	}

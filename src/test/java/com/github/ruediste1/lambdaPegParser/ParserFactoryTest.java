@@ -210,6 +210,16 @@ public class ParserFactoryTest {
 		String input();
 	}
 
+	static class RulesWithArgumentsParser extends DefaultParser {
+		public RulesWithArgumentsParser(DefaultParsingContext ctx) {
+			super(ctx);
+		}
+
+		void ruleWithArguments(int a, int b) {
+			System.out.println("a: " + a + " b:" + b);
+		}
+	}
+
 	static class SmallRecursiveParser extends DefaultParser implements
 			ISmallRecursiveParser {
 		public SmallRecursiveParser(DefaultParsingContext ctx) {
@@ -263,6 +273,13 @@ public class ParserFactoryTest {
 	public void recursive() {
 		RecursiveParser parser = create(RecursiveParser.class, "1+2*3");
 		assertEquals("(1)+((2)*(3))", parser.input());
+	}
+
+	@Test
+	public void ruleWithArguments() {
+		RulesWithArgumentsParser parser = create(
+				RulesWithArgumentsParser.class, "1+2*3");
+		parser.ruleWithArguments(1, 2);
 	}
 
 	@Test

@@ -48,6 +48,7 @@ public class PrototypeCustomizer extends GeneratorAdapter {
 	@Override
 	public void visitInsn(int opcode) {
 		if (opcode == Opcodes.ARETURN) {
+			// unbox return value if necessary
 			Type returnType = Type.getMethodType(ruleNode.desc).getReturnType();
 			unbox(returnType);
 			returnValue();

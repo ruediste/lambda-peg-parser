@@ -68,8 +68,8 @@ public class MethodCallInliner extends GeneratorAdapter {
 		toBeInlined.instructions.resetLabels();
 
 		// pass the to be inlined method through the inlining adapter to this
-		toBeInlined.accept(new InliningAdapter(this, end,
-				opcode == Opcodes.INVOKESTATIC ? Opcodes.ACC_STATIC : 0, desc));
+		toBeInlined.accept(new InliningAdapter(this, toBeInlined.access,
+				toBeInlined.desc, end));
 		inlining = false;
 		afterInlining = true;
 
@@ -102,5 +102,11 @@ public class MethodCallInliner extends GeneratorAdapter {
 		for (CatchBlock b : blocks)
 			super.visitTryCatchBlock(b.start, b.end, b.handler, b.type);
 		super.visitMaxs(stack, locals);
+	}
+
+	@Override
+	public void visitFrame(int type, int nLocal, Object[] local, int nStack,
+			Object[] stack) {
+		// swallow
 	}
 }

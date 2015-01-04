@@ -14,7 +14,7 @@ public class PrototypeParser extends Parser<ParsingContext<?>> {
 	/**
 	 * call will be replaced with the inlined rule method
 	 */
-	public Object sampleRule() {
+	public static Object sampleRule() {
 		return null;
 	}
 
