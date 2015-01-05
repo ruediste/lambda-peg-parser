@@ -199,7 +199,7 @@ public class Parser<TCtx extends ParsingContext<?>> {
 	public final <T> Optional<T> Optional(Supplier<T> term) {
 		StateSnapshot snapshot = ctx.snapshot();
 		try {
-			return Optional.of(term.get());
+			return Optional.ofNullable(term.get());
 		} catch (NoMatchException e) {
 			// swallow, restore, break loop
 			snapshot.restore();
@@ -336,9 +336,10 @@ public class Parser<TCtx extends ParsingContext<?>> {
 	private boolean matchString(String expected) {
 		OfInt it = expected.codePoints().iterator();
 		while (it.hasNext() && ctx.hasNext()) {
-			if (it.nextInt() != ctx.next()) {
+			if (it.nextInt() != ctx.peek()) {
 				return false;
 			}
+			ctx.next();
 		}
 
 		return !it.hasNext();
@@ -396,6 +397,20 @@ public class Parser<TCtx extends ParsingContext<?>> {
 	}
 
 	/**
+	 * Match all chars except the ones specified
+	 */
+	public final String NoneOf(String chars) {
+		int startIndex = ctx.getIndex();
+		if (ctx.hasNext()) {
+			int cp = ctx.next();
+			if (chars.codePoints().allMatch(x -> x != cp)) {
+				return String.valueOf(Character.toChars(cp));
+			}
+		}
+		throw new NoMatchException(ctx, startIndex, "any char except " + chars);
+	}
+
+	/**
 	 * Match all characters in a given range (inclusive). Return a string
 	 * containing only the matched character.
 	 */
@@ -417,5 +432,12 @@ public class Parser<TCtx extends ParsingContext<?>> {
 
 	public TCtx getParsingContext() {
 		return ctx;
+	}
+
+	@Override
+	public java.lang.String toString() {
+		LineInfo info = ctx.currentPositionInfo();
+		return getClass().getSimpleName() + " line: " + info.getLineNr() + "\n"
+				+ info.getLine() + "\n" + info.getUnderline(' ', '^');
 	}
 }

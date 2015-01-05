@@ -34,6 +34,10 @@ public class ParsingContext<TState extends ParsingState<TState>> {
 
 	public final Event<String> contentSetEvent = new Event<>();
 
+	public String getContent() {
+		return content;
+	}
+
 	public final void setContent(String content) {
 		this.content = content;
 		state = createInitialState();
@@ -249,7 +253,7 @@ public class ParsingContext<TState extends ParsingState<TState>> {
 					+ ". Expected: "
 					+ expectations.stream().collect(joining(", ")) + "\n"
 					+ errorLineInfo.getLine() + "\n"
-					+ errorLineInfo.getErrorLineUnderline(' ', '^');
+					+ errorLineInfo.getUnderline(' ', '^');
 		}
 
 	}
@@ -291,8 +295,12 @@ public class ParsingContext<TState extends ParsingState<TState>> {
 
 	@Override
 	public String toString() {
-		LineInfo info = new LineInfo(content, getIndex());
+		LineInfo info = currentPositionInfo();
 		return getClass().getSimpleName() + "Line " + info.getLineNr() + "\n"
-				+ info.getLine() + "\n" + info.getErrorLineUnderline(' ', '*');
+				+ info.getLine() + "\n" + info.getUnderline(' ', '*');
+	}
+
+	public LineInfo currentPositionInfo() {
+		return new LineInfo(content, getIndex());
 	}
 }

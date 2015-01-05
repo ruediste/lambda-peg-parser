@@ -7,14 +7,14 @@ import org.junit.Test;
 public class LineInfoTest {
 
 	@Test
-	public void testGetErrorLineUnderline() throws Exception {
-		LineInfo info = new LineInfo("abc", 0);
-		assertEquals("*--", info.getErrorLineUnderline('-', '*'));
-		info = new LineInfo("abc", 1);
-		assertEquals("-*-", info.getErrorLineUnderline('-', '*'));
-		info = new LineInfo("abc", 2);
-		assertEquals("--*", info.getErrorLineUnderline('-', '*'));
-	}
+		public void testGetUnderline() throws Exception {
+			LineInfo info = new LineInfo("abc", 0);
+			assertEquals("*--", info.getUnderline('-', '*'));
+			info = new LineInfo("abc", 1);
+			assertEquals("-*-", info.getUnderline('-', '*'));
+			info = new LineInfo("abc", 2);
+			assertEquals("--*", info.getUnderline('-', '*'));
+		}
 
 	@Test
 	public void testFillLineInfo() throws Exception {
@@ -52,6 +52,6 @@ public class LineInfoTest {
 		assertEquals("漢字", desc.getLine());
 		assertEquals(1, desc.getLineNr());
 		assertEquals(1, desc.getIndexInLine());
-		assertEquals("-*", desc.getErrorLineUnderline('-', '*'));
+		assertEquals("-*", desc.getUnderline('-', '*'));
 	}
 }

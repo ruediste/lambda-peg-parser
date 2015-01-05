@@ -47,7 +47,7 @@ public class LineInfo {
 	 * @param positionMarkerCP
 	 *            codePoint of the caracter to use as marker
 	 */
-	public String getErrorLineUnderline(int spacerCP, int positionMarkerCP) {
+	public String getUnderline(int spacerCP, int positionMarkerCP) {
 		StringBuilder sb = new StringBuilder();
 		int i = 0;
 		for (; i < indexInLine; i++) {
@@ -64,7 +64,7 @@ public class LineInfo {
 	@Override
 	public String toString() {
 		return "LineInfo: Line: " + lineNr + "\n" + line + "\n"
-				+ getErrorLineUnderline(' ', '^');
+				+ getUnderline(' ', '^');
 	}
 
 	public int getLineNr() {

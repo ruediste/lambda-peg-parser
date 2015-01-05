@@ -11,11 +11,18 @@ public class Tracer {
 
 	private PrintWriter target;
 
+	private int depth;
+
+	private int position = -1;
+
+	private final ParsingContext<?> ctx;
+
 	public Tracer(ParsingContext<?> ctx, Writer target) {
 		this(ctx, new PrintWriter(target));
 	}
 
 	public Tracer(ParsingContext<?> ctx, PrintWriter target) {
+		this.ctx = ctx;
 		this.target = target;
 		register(ctx);
 	}
@@ -24,16 +31,28 @@ public class Tracer {
 		this(ctx, new PrintWriter(out));
 	}
 
-	private int depth;
-
 	private void indent() {
 		indent(depth);
 	}
 
 	private void indent(int depth) {
-		for (int i = 0; i < depth; i++) {
-			target.append("  ");
+		String indent = indentImpl(depth);
+		if (position < ctx.getIndex() || position > ctx.getIndex() + 10) {
+			LineInfo info = ctx.currentPositionInfo();
+			target.append(indent + "index " + ctx.getIndex() + " Line "
+					+ info.getLineNr() + "\n" + indent + info.getLine() + "\n"
+					+ indent + info.getUnderline(' ', '^') + "\n");
+			position = ctx.getIndex();
 		}
+		target.append(indent);
+	}
+
+	private String indentImpl(int depth) {
+		StringBuilder sb = new StringBuilder();
+		for (int i = 0; i < depth; i++) {
+			sb.append("  ");
+		}
+		return sb.toString();
 	}
 
 	private void register(ParsingContext<?> ctx) {
