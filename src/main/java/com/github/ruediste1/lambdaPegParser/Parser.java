@@ -106,6 +106,30 @@ public class Parser<TCtx extends ParsingContext<?>> {
 	}
 
 	/**
+	 * Match the given runnable. The input position is not advanced.
+	 */
+	public void Test(Runnable runnable) {
+		StateSnapshot snapshot = ctx.snapshot();
+		try {
+			runnable.run();
+		} finally {
+			snapshot.restore();
+		}
+	}
+
+	/**
+	 * Match the given runnable. The input position is not advanced.
+	 */
+	public <T> T Test(Supplier<T> term) {
+		StateSnapshot snapshot = ctx.snapshot();
+		try {
+			return term.get();
+		} finally {
+			snapshot.restore();
+		}
+	}
+
+	/**
 	 * Tries each choice in turn until a choice can successfully be matched. If
 	 * a choice is null, it is ignored.
 	 */
@@ -132,6 +156,25 @@ public class Parser<TCtx extends ParsingContext<?>> {
 	 */
 	@SafeVarargs
 	public final <T> T FirstOf(Supplier<T>... choices) {
+		for (Supplier<T> choice : choices) {
+			if (choice == null)
+				continue;
+			StateSnapshot snapshot = ctx.snapshot();
+			try {
+				return choice.get();
+			} catch (NoMatchException e) {
+				// swallow, restore
+				snapshot.restore();
+			}
+		}
+		throw new NoMatchException();
+	}
+
+	/**
+	 * Tries each choice in turn until a choice can successfully be matched and
+	 * returns it's value. If a choice is null, it is ignored.
+	 */
+	public final <T> T FirstOf(Iterable<Supplier<T>> choices) {
 		for (Supplier<T> choice : choices) {
 			if (choice == null)
 				continue;

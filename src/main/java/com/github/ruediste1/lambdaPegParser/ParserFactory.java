@@ -28,6 +28,7 @@ import com.github.ruediste1.lambdaPegParser.weaving.LocalVariableShifter;
 import com.github.ruediste1.lambdaPegParser.weaving.MethodCallInliner;
 import com.github.ruediste1.lambdaPegParser.weaving.MinMaxLineMethodAdapter;
 import com.github.ruediste1.lambdaPegParser.weaving.PrototypeCustomizer;
+import com.google.common.io.ByteStreams;
 import com.google.common.reflect.TypeToken;
 
 /**
@@ -53,6 +54,19 @@ public class ParserFactory {
 			if (name.equals(parserClassName)) {
 				defineClass(parserClassName, weavedByteCode, 0,
 						weavedByteCode.length);
+			}
+
+			if (name.startsWith(parserClassName)
+					&& name.substring(parserClassName.length()).startsWith("$")) {
+				InputStream in = getParent().getResourceAsStream(
+						name.replace('.', '/') + ".class");
+				byte[] bb;
+				try {
+					bb = ByteStreams.toByteArray(in);
+				} catch (IOException e) {
+					throw new RuntimeException(e);
+				}
+				return defineClass(name, bb, 0, bb.length);
 			}
 			return super.loadClass(name);
 		}
@@ -213,6 +227,11 @@ public class ParserFactory {
 		// load class
 		ClassNode cn = new ClassNode();
 		classReader.accept(cn, ClassReader.EXPAND_FRAMES);
+
+		// dump raw byte code
+		// cn.accept(new TraceClassVisitor(null, new Textifier(), new
+		// PrintWriter(
+		// System.out)));
 
 		// load prototype method
 		MethodNode prototype = loadPrototypeMethodNode();

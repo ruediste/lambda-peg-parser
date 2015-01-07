@@ -220,6 +220,26 @@ public class ParserFactoryTest {
 		}
 	}
 
+	static class InnerClassParser extends DefaultParser {
+		public InnerClassParser(DefaultParsingContext ctx) {
+			super(ctx);
+		}
+
+		private class InnerClass {
+		}
+
+		void rule() {
+			new InnerClass();
+			new Function<String, String>() {
+
+				@Override
+				public java.lang.String apply(java.lang.String t) {
+					return null;
+				}
+			};
+		}
+	}
+
 	static class SmallRecursiveParser extends DefaultParser implements
 			ISmallRecursiveParser {
 		public SmallRecursiveParser(DefaultParsingContext ctx) {
@@ -299,6 +319,13 @@ public class ParserFactoryTest {
 				SmallRecursiveParser.class, ISmallRecursiveParser.class,
 				" b bb");
 		assertEquals("bbb", parser.input());
+	}
+
+	@Test
+	public void innerClass() {
+		InnerClassParser parser = ParserFactory.create(InnerClassParser.class,
+				" b bb");
+		parser.rule();
 	}
 
 }
