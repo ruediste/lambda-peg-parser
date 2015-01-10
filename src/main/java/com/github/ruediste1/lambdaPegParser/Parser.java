@@ -155,8 +155,8 @@ public class Parser<TCtx extends ParsingContext<?>> {
 	 * returns it's value. If a choice is null, it is ignored.
 	 */
 	@SafeVarargs
-	public final <T> T FirstOf(Supplier<T>... choices) {
-		for (Supplier<T> choice : choices) {
+	public final <T> T FirstOf(Supplier<? extends T>... choices) {
+		for (Supplier<? extends T> choice : choices) {
 			if (choice == null)
 				continue;
 			StateSnapshot snapshot = ctx.snapshot();
@@ -174,8 +174,8 @@ public class Parser<TCtx extends ParsingContext<?>> {
 	 * Tries each choice in turn until a choice can successfully be matched and
 	 * returns it's value. If a choice is null, it is ignored.
 	 */
-	public final <T> T FirstOf(Iterable<Supplier<T>> choices) {
-		for (Supplier<T> choice : choices) {
+	public final <T> T FirstOf(Iterable<Supplier<? extends T>> choices) {
+		for (Supplier<? extends T> choice : choices) {
 			if (choice == null)
 				continue;
 			StateSnapshot snapshot = ctx.snapshot();
