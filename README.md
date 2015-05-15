@@ -3,6 +3,8 @@ This is a Java library providing easy-to-use, powerful and elegant parsing of ar
 
 This project is similar to [parboiled](https://github.com/sirthias/parboiled), with the important difference that the rule methods are executed directly and can return any value. This reduces the conceptual difference to hand coded parsers and thus makes learning to use the parser easier.
 
+[![Build Status](https://travis-ci.org/ruediste/lambda-peg-parser.svg?branch=master)](https://travis-ci.org/ruediste/lambda-peg-parser)
+
 ## Overview
 A grammar is defined by creating a subclass of the **Parser** class. Each method in the subclass defines a parsing rule. While parsing, the methods are basically executed as normal java methods. The input is consumed using utility functions from the base class such as **String** or **Char**. If the expected input is not found, a **NoMatchException** is thrown. Utility classes like **Optional**, **FirstOf** or **OneOrMore** catch **NoMatchException**s and manage backtracking or the using of the already-used result. The rule methods can construct any result, typically an AST, possibly using the results of rule methods they call themselves.
 
