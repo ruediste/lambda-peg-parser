@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/ruediste/lambda-peg-parser.svg?branch=master)](https://travis-ci.org/ruediste/lambda-peg-parser)
+
 # Lambda Parsing Expression Grammar Parser
 This is a Java library providing easy-to-use, powerful and elegant parsing of arbitrary text. It is based on Parsing Expression Grammars (PEGs), which are similar to simple recursive descent parsers, as you would write them by hand, with the addition of backtracking (try something, if it fails, try something else) and support for left recursion.
 
