@@ -32,7 +32,7 @@ public class ParsingContext<TState extends ParsingState<TState>> {
 		setContent(content);
 	}
 
-	public final Event<String> contentSetEvent = new Event<>();
+	public final LambdaPegEvent<String> contentSetEvent = new LambdaPegEvent<>();
 
 	public String getContent() {
 		return content;
@@ -199,7 +199,7 @@ public class ParsingContext<TState extends ParsingState<TState>> {
 
 	}
 
-	public final Event<Expectation> expectationRegistered = new Event<>();
+	public final LambdaPegEvent<Expectation> expectationRegistered = new LambdaPegEvent<>();
 
 	/**
 	 * Register an expectation at the supplied index with the current
@@ -258,35 +258,35 @@ public class ParsingContext<TState extends ParsingState<TState>> {
 
 	}
 
-	public final Event<RuleLoggingInfo> recursiveEvent = new Event<>();
+	public final LambdaPegEvent<RuleLoggingInfo> recursiveEvent = new LambdaPegEvent<>();
 
 	public void recursive(RuleLoggingInfo loggingInfo) {
 		loggingInfo.index = getIndex();
 		recursiveEvent.fire(loggingInfo);
 	}
 
-	public final Event<RuleLoggingInfo> enteringEvent = new Event<>();
+	public final LambdaPegEvent<RuleLoggingInfo> enteringEvent = new LambdaPegEvent<>();
 
 	public void entering(RuleLoggingInfo loggingInfo) {
 		loggingInfo.index = getIndex();
 		enteringEvent.fire(loggingInfo);
 	}
 
-	public final Event<RuleLoggingInfo> failedEvent = new Event<>();
+	public final LambdaPegEvent<RuleLoggingInfo> failedEvent = new LambdaPegEvent<>();
 
 	public void failed(RuleLoggingInfo loggingInfo) {
 		loggingInfo.index = getIndex();
 		failedEvent.fire(loggingInfo);
 	}
 
-	public final Event<RuleLoggingInfo> leavingEvent = new Event<>();
+	public final LambdaPegEvent<RuleLoggingInfo> leavingEvent = new LambdaPegEvent<>();
 
 	public void leaving(RuleLoggingInfo loggingInfo) {
 		loggingInfo.index = getIndex();
 		leavingEvent.fire(loggingInfo);
 	}
 
-	public final Event<RuleLoggingInfo> retryingEvent = new Event<>();
+	public final LambdaPegEvent<RuleLoggingInfo> retryingEvent = new LambdaPegEvent<>();
 
 	public void retrying(RuleLoggingInfo loggingInfo) {
 		loggingInfo.index = getIndex();
