@@ -11,7 +11,7 @@
 	<packaging>jar</packaging>
 	<name>Lamda Parsing Expression Grammar Parser</name>
 	<url> https://github.com/ruediste/lambda-peg-parser</url>
-	<version>1.0</version>
+	<version>1.1-SNAPSHOT</version>
 
 	<licenses>
 		<license>
@@ -31,7 +31,7 @@
 		<connection>scm:git:git@github.com:ruediste/lambda-peg-parser.git</connection>
 		<developerConnection>scm:git:git@github.com:ruediste/lambda-peg-parser.git</developerConnection>
 		<url>git@github.com:ruediste/lambda-peg-parser.git</url>
-		<tag>lambdaPegParser-1.0</tag>
+		<tag>HEAD</tag>
 	</scm>
 
 	<build>
