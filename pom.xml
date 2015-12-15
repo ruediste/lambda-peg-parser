@@ -58,19 +58,10 @@
 
 		<dependency>
 			<groupId>org.ow2.asm</groupId>
-			<artifactId>asm-util</artifactId>
+			<artifactId>asm-debug-all</artifactId>
 			<version>5.0.4</version>
 		</dependency>
-		<dependency>
-			<groupId>org.ow2.asm</groupId>
-			<artifactId>asm-commons</artifactId>
-			<version>5.0.4</version>
-		</dependency>
-		<dependency>
-			<groupId>org.ow2.asm</groupId>
-			<artifactId>asm-analysis</artifactId>
-			<version>5.0.4</version>
-		</dependency>
+		
 
 		<dependency>
 			<groupId>junit</groupId>
