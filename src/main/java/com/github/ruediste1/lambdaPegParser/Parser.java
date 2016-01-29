@@ -258,7 +258,7 @@ public class Parser<TCtx extends ParsingContext<?>> {
             String expectation) {
         String result = ZeroOrMoreChars(criteria, expectation);
         if (result.isEmpty()) {
-            throw new NoMatchException();
+            throw new NoMatchException(ctx, ctx.getIndex(), expectation);
         }
         return result;
     }
