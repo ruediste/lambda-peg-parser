@@ -6,13 +6,13 @@ import java.util.function.Consumer;
 
 public class LambdaPegEvent<T> {
 
-	private List<Consumer<T>> handlers = new ArrayList<>();
+    private List<Consumer<T>> handlers = new ArrayList<>();
 
-	public void register(Consumer<T> handler) {
-		handlers.add(handler);
-	}
+    public void register(Consumer<T> handler) {
+        handlers.add(handler);
+    }
 
-	public void fire(T argument) {
-		handlers.forEach(x -> x.accept(argument));
-	}
+    public void fire(T argument) {
+        handlers.forEach(x -> x.accept(argument));
+    }
 }

@@ -8,35 +8,35 @@ import org.objectweb.asm.MethodVisitor;
  */
 public class MinMaxLineMethodAdapter extends MethodVisitor {
 
-	private Integer minLineNumber;
-	private Integer maxLineNumber;
+    private Integer minLineNumber;
+    private Integer maxLineNumber;
 
-	public MinMaxLineMethodAdapter(int api, MethodVisitor mv) {
-		super(api, mv);
-	}
+    public MinMaxLineMethodAdapter(int api, MethodVisitor mv) {
+        super(api, mv);
+    }
 
-	public Integer getMaxLineNumber() {
-		return maxLineNumber;
-	}
+    public Integer getMaxLineNumber() {
+        return maxLineNumber;
+    }
 
-	public int getMaxLineNumberOr(int fallback) {
-		return maxLineNumber == null ? fallback : maxLineNumber;
-	}
+    public int getMaxLineNumberOr(int fallback) {
+        return maxLineNumber == null ? fallback : maxLineNumber;
+    }
 
-	public Integer getMinLineNumber() {
-		return minLineNumber;
-	}
+    public Integer getMinLineNumber() {
+        return minLineNumber;
+    }
 
-	public int getMinLineNumberOr(int fallback) {
-		return minLineNumber == null ? fallback : minLineNumber;
-	}
+    public int getMinLineNumberOr(int fallback) {
+        return minLineNumber == null ? fallback : minLineNumber;
+    }
 
-	@Override
-	public void visitLineNumber(int line, Label start) {
-		if (minLineNumber == null || minLineNumber > line)
-			minLineNumber = line;
-		if (maxLineNumber == null || maxLineNumber < line)
-			maxLineNumber = line;
-		super.visitLineNumber(line, start);
-	}
+    @Override
+    public void visitLineNumber(int line, Label start) {
+        if (minLineNumber == null || minLineNumber > line)
+            minLineNumber = line;
+        if (maxLineNumber == null || maxLineNumber < line)
+            maxLineNumber = line;
+        super.visitLineNumber(line, start);
+    }
 }

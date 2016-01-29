@@ -13,32 +13,32 @@ import org.objectweb.asm.commons.LocalVariablesSorter;
  * 
  */
 public class InliningAdapter extends LocalVariablesSorter {
-	private final Label end;
-	private LocalVariablesSorter lvs;
+    private final Label end;
+    private LocalVariablesSorter lvs;
 
-	public InliningAdapter(LocalVariablesSorter mv, int access, String desc,
-			Label end) {
-		super(Opcodes.ASM5, access, desc, mv);
-		this.end = end;
-		this.lvs = mv;
-	}
+    public InliningAdapter(LocalVariablesSorter mv, int access, String desc,
+            Label end) {
+        super(Opcodes.ASM5, access, desc, mv);
+        this.end = end;
+        this.lvs = mv;
+    }
 
-	@Override
-	public void visitInsn(int opcode) {
-		if (opcode >= Opcodes.IRETURN && opcode <= Opcodes.RETURN) {
-			super.visitJumpInsn(Opcodes.GOTO, end);
-		} else {
-			super.visitInsn(opcode);
-		}
-	}
+    @Override
+    public void visitInsn(int opcode) {
+        if (opcode >= Opcodes.IRETURN && opcode <= Opcodes.RETURN) {
+            super.visitJumpInsn(Opcodes.GOTO, end);
+        } else {
+            super.visitInsn(opcode);
+        }
+    }
 
-	@Override
-	public void visitMaxs(int stack, int locals) {
-		// swallow
-	}
+    @Override
+    public void visitMaxs(int stack, int locals) {
+        // swallow
+    }
 
-	@Override
-	protected int newLocalMapping(Type type) {
-		return lvs.newLocal(type);
-	}
+    @Override
+    protected int newLocalMapping(Type type) {
+        return lvs.newLocal(type);
+    }
 }
