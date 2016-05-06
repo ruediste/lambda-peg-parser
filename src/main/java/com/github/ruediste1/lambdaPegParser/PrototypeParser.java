@@ -59,8 +59,7 @@ public class PrototypeParser extends Parser<ParsingContext<?>> {
         loggingInfo.parserClass = getClass();
         loggingInfo.argumentTypes = getArgumentTypes();
 
-        RuleInvocation invocation = new RuleInvocation(getMethodNumber(),
-                loggingInfo.arguments, ctx.getIndex());
+        RuleInvocation invocation = new RuleInvocation(getMethodNumber(), loggingInfo.arguments, ctx.getIndex());
 
         // check for left recursions
         {
@@ -71,7 +70,7 @@ public class PrototypeParser extends Parser<ParsingContext<?>> {
                 existing.recursive = true;
                 if (existing.seed != null) {
                     existing.seed.snapshot.restoreClone();
-                    loggingInfo.result = Var.of(existing.seed.value);
+                    loggingInfo.result = existing.seed.value;
                     ctx.recursive(loggingInfo);
                     return existing.seed.value;
                 } else {
@@ -131,7 +130,7 @@ public class PrototypeParser extends Parser<ParsingContext<?>> {
                 }
 
             }
-            loggingInfo.result = Var.of(result);
+            loggingInfo.result = result;
             return result;
         } catch (Throwable t) {
             ctx.failed(loggingInfo);

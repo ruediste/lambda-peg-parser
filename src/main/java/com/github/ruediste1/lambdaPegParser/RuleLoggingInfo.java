@@ -8,7 +8,7 @@ public class RuleLoggingInfo {
     public String methodName;
     public Object[] arguments;
     public Class<?>[] argumentTypes;
-    public Var<Object> result;
+    public Object result;
     public int index;
 
     public RuleLoggingInfo(RuleLoggingInfo existing) {
