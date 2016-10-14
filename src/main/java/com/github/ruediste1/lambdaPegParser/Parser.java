@@ -3,6 +3,7 @@ package com.github.ruediste1.lambdaPegParser;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Objects;
 import java.util.Optional;
@@ -62,8 +63,7 @@ public class Parser<TCtx extends ParsingContext<?>> {
 
         @Override
         public String toString() {
-            return "RuleInvocation [method=" + method + ", args="
-                    + Arrays.toString(args) + ", position=" + position
+            return "RuleInvocation [method=" + method + ", args=" + Arrays.toString(args) + ", position=" + position
                     + ", recursive=" + recursive + ", seed=" + seed + "]";
         }
 
@@ -84,8 +84,7 @@ public class Parser<TCtx extends ParsingContext<?>> {
                 return false;
             }
             RuleInvocation other = (RuleInvocation) obj;
-            return method == other.method && Arrays.equals(args, other.args)
-                    && position == other.position;
+            return method == other.method && Arrays.equals(args, other.args) && position == other.position;
         }
 
         public RuleInvocation(int method, Object[] args, int position) {
@@ -103,6 +102,26 @@ public class Parser<TCtx extends ParsingContext<?>> {
         if (ctx.hasNext()) {
             throw new NoMatchException(ctx, ctx.getIndex(), "End Of Input");
         }
+    }
+
+    /**
+     * Match the given runnable. In any case, the input position is restored
+     * after matching. If the runnable matches, a {@link NoMatchException} is
+     * raised.
+     */
+    public void Not(Runnable runnable, String expectation) {
+        StateSnapshot snapshot = ctx.snapshot();
+        boolean success = false;
+        try {
+            runnable.run();
+            success = true;
+        } catch (NoMatchException e) {
+            // swallow
+        } finally {
+            snapshot.restore();
+        }
+        if (success)
+            throw new NoMatchException(ctx, ctx.getIndex(), expectation);
     }
 
     /**
@@ -148,6 +167,17 @@ public class Parser<TCtx extends ParsingContext<?>> {
             }
         }
         throw new NoMatchException();
+    }
+
+    /**
+     * Match the first supplier followed by the runnables and return the result
+     */
+    public final <T> T FirstValue(Supplier<? extends T> first, Runnable... runnables) {
+        T result = first.get();
+        for (Runnable runnable : runnables) {
+            runnable.run();
+        }
+        return result;
     }
 
     /**
@@ -254,8 +284,7 @@ public class Parser<TCtx extends ParsingContext<?>> {
      * Match one or more chars matching the criteria. If no matching character
      * is found, report the unmet expectation.
      */
-    public final String OneOrMoreChars(Predicate<Integer> criteria,
-            String expectation) {
+    public final String OneOrMoreChars(Predicate<Integer> criteria, String expectation) {
         String result = ZeroOrMoreChars(criteria, expectation);
         if (result.isEmpty()) {
             throw new NoMatchException(ctx, ctx.getIndex(), expectation);
@@ -266,8 +295,7 @@ public class Parser<TCtx extends ParsingContext<?>> {
     /**
      * Match zero or more chars matching the criteria.
      */
-    public final String ZeroOrMoreChars(Predicate<Integer> criteria,
-            String expectation) {
+    public final String ZeroOrMoreChars(Predicate<Integer> criteria, String expectation) {
         StringBuilder sb = new StringBuilder();
         while (true) {
             if (ctx.hasNext() && criteria.test(ctx.peek())) {
@@ -321,6 +349,33 @@ public class Parser<TCtx extends ParsingContext<?>> {
         if (!found) {
             throw new NoMatchException();
         }
+    }
+
+    public final <T> Collection<T> OneOrMore(Supplier<T> term, Runnable separator) {
+        ArrayList<T> result = new ArrayList<>();
+        result.add(term.get());
+        result.addAll(ZeroOrMore(() -> {
+            separator.run();
+            return term.get();
+        }));
+        return result;
+    }
+
+    public final <T> Collection<T> ZeroOrMore(Supplier<T> term, Runnable separator) {
+        return Optional(() -> OneOrMore(term, separator)).orElse(Collections.emptyList());
+    }
+
+    /**
+     * Match the supplied term. All expectations generated while matching the
+     * term are dropped. If matching the term fails, the single specified
+     * expectation is registered as expected at the input position at the
+     * beginning of the matching attempt.
+     */
+    public final void Atomic(String expectation, Runnable term) {
+        Atomic(expectation, () -> {
+            term.run();
+            return null;
+        });
     }
 
     /**
@@ -479,8 +534,8 @@ public class Parser<TCtx extends ParsingContext<?>> {
 
     @Override
     public java.lang.String toString() {
-        LineInfo info = ctx.currentPositionInfo();
-        return getClass().getSimpleName() + " line: " + info.getLineNr() + "\n"
-                + info.getLine() + "\n" + info.getUnderline(' ', '^');
+        PositionInfo info = ctx.currentPositionInfo();
+        return getClass().getSimpleName() + " line: " + info.getLineNr() + "\n" + info.getLine() + "\n"
+                + info.getUnderline(' ', '^');
     }
 }

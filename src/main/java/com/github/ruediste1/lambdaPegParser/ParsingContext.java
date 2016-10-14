@@ -128,8 +128,7 @@ public class ParsingContext<TState extends ParsingState<TState>> {
 
         private void checkSnapshot() {
             if (snapshot == null)
-                throw new RuntimeException(
-                        "cannot restore after the first call to restore()");
+                throw new RuntimeException("cannot restore after the first call to restore()");
         }
 
     }
@@ -215,8 +214,7 @@ public class ParsingContext<TState extends ParsingState<TState>> {
      * expectations
      */
     public ErrorDesciption getErrorDescription() {
-        ErrorDesciption result = new ErrorDesciption(
-                Collections.unmodifiableSet(expectationFrame.expectations),
+        ErrorDesciption result = new ErrorDesciption(Collections.unmodifiableSet(expectationFrame.expectations),
                 content, expectationFrame.index);
         return result;
     }
@@ -238,21 +236,19 @@ public class ParsingContext<TState extends ParsingState<TState>> {
         public int errorPosition;
         public Set<String> expectations;
 
-        public LineInfo errorLineInfo;
+        public PositionInfo errorLineInfo;
 
-        public ErrorDesciption(Set<String> expectations, String content,
-                int errorPosition) {
+        public ErrorDesciption(Set<String> expectations, String content, int errorPosition) {
             this.expectations = expectations;
             this.errorPosition = errorPosition;
-            errorLineInfo = new LineInfo(content, errorPosition);
+            errorLineInfo = new PositionInfo(content, errorPosition);
         }
 
         @Override
         public String toString() {
             return "Error on line " + errorLineInfo.getLineNr() + ". Expected: "
-                    + expectations.stream().collect(joining(", ")) + "\n"
-                    + errorLineInfo.getLine() + "\n"
-                    + errorLineInfo.getUnderline(' ', '^');
+                    + expectations.stream().collect(joining(", ")) + " instead of '" + errorLineInfo.getPositionChar()
+                    + "'\n" + errorLineInfo.getLine() + "\n" + errorLineInfo.getUnderline(' ', '^');
         }
 
     }
@@ -294,12 +290,12 @@ public class ParsingContext<TState extends ParsingState<TState>> {
 
     @Override
     public String toString() {
-        LineInfo info = currentPositionInfo();
-        return getClass().getSimpleName() + "Line " + info.getLineNr() + "\n"
-                + info.getLine() + "\n" + info.getUnderline(' ', '*');
+        PositionInfo info = currentPositionInfo();
+        return getClass().getSimpleName() + "Line " + info.getLineNr() + "\n" + info.getLine() + "\n"
+                + info.getUnderline();
     }
 
-    public LineInfo currentPositionInfo() {
-        return new LineInfo(content, getIndex());
+    public PositionInfo currentPositionInfo() {
+        return new PositionInfo(content, getIndex());
     }
 }

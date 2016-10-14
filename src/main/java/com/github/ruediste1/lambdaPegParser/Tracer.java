@@ -38,7 +38,7 @@ public class Tracer {
     private void indent(int depth) {
         String indent = indentImpl(depth);
         if (position < ctx.getIndex() || position > ctx.getIndex() + 10) {
-            LineInfo info = ctx.currentPositionInfo();
+            PositionInfo info = ctx.currentPositionInfo();
             target.append(indent + "index " + ctx.getIndex() + " Line "
                     + info.getLineNr() + "\n" + indent + info.getLine() + "\n"
                     + indent + info.getUnderline(' ', '^') + "\n");
