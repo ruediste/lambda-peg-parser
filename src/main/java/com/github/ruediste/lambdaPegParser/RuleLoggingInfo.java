@@ -1,4 +1,4 @@
-package com.github.ruediste1.lambdaPegParser;
+package com.github.ruediste.lambdaPegParser;
 
 /**
  * Contains all information reported when logging rule invocations

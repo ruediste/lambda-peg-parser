@@ -1,4 +1,4 @@
-package com.github.ruediste1.lambdaPegParser;
+package com.github.ruediste.lambdaPegParser;
 
 import static java.util.stream.Collectors.joining;
 import static org.junit.Assert.assertEquals;
@@ -8,6 +8,14 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.junit.Test;
+
+import com.github.ruediste.lambdaPegParser.DefaultParser;
+import com.github.ruediste.lambdaPegParser.DefaultParsingContext;
+import com.github.ruediste.lambdaPegParser.NoMatchException;
+import com.github.ruediste.lambdaPegParser.Parser;
+import com.github.ruediste.lambdaPegParser.ParserFactory;
+import com.github.ruediste.lambdaPegParser.ParsingContext;
+import com.github.ruediste.lambdaPegParser.Tracer;
 
 public class ParserFactoryTest {
 
@@ -37,15 +45,15 @@ public class ParserFactoryTest {
 
         String Expression() {
             return "(" + Term()
-                    + ZeroOrMore(() -> FirstOf(() -> String("+", " plus "),
-                            () -> String("-", " minus ")) + Term() + ")")
+                    + ZeroOrMore(() -> FirstOf(() -> Str("+", " plus "),
+                            () -> Str("-", " minus ")) + Term() + ")")
                                     .stream().collect(Collectors.joining());
         }
 
         String Term() {
             return "(" + Factor()
-                    + ZeroOrMore(() -> FirstOf(() -> String("*", " mul "),
-                            () -> String("/", " div")) + Factor()).stream()
+                    + ZeroOrMore(() -> FirstOf(() -> Str("*", " mul "),
+                            () -> Str("/", " div")) + Factor()).stream()
                                     .collect(Collectors.joining())
                     + ")";
         }
@@ -55,7 +63,7 @@ public class ParserFactoryTest {
         }
 
         String Parens() {
-            return String("(", "(") + Expression() + String(")", ")");
+            return Str("(", "(") + Expression() + Str(")", ")");
         }
 
         String Number() {
@@ -93,8 +101,8 @@ public class ParserFactoryTest {
 
         int Expression() {
             int left = Term();
-            return FirstOf(() -> String("+", () -> left + Term()),
-                    () -> String("-", () -> left - Term()));
+            return FirstOf(() -> Str("+", () -> left + Term()),
+                    () -> Str("-", () -> left - Term()));
         }
 
         int Term() {
@@ -102,11 +110,11 @@ public class ParserFactoryTest {
 
             Collection<Function<Integer, Integer>> funcs = ZeroOrMore(
                     () -> this.<Function<Integer, Integer>> FirstOf(() -> {
-                        String("*");
+                        Str("*");
                         int right = Factor();
                         return x -> x * right;
                     } , () -> {
-                        String("/");
+                        Str("/");
                         int right = Factor();
                         return x -> x / right;
                     }));
@@ -123,9 +131,9 @@ public class ParserFactoryTest {
         }
 
         int Parens() {
-            String("(");
+            Str("(");
             int result = Expression();
-            String(")");
+            Str(")");
             return result;
         }
 
@@ -170,22 +178,22 @@ public class ParserFactoryTest {
         String product() {
             return Expect("product",
                     () -> "(" + expr() + ")"
-                            + OneOrMore(() -> FirstOf(() -> String("*"),
-                                    () -> String("/")) + "(" + expr() + ")")
+                            + OneOrMore(() -> FirstOf(() -> Str("*"),
+                                    () -> Str("/")) + "(" + expr() + ")")
                                             .stream().collect(joining()));
         }
 
         String sum() {
             return Expect("sum",
                     () -> "(" + expr() + ")"
-                            + OneOrMore(() -> FirstOf(() -> String("+"),
-                                    () -> String("-")) + "(" + expr() + ")")
+                            + OneOrMore(() -> FirstOf(() -> Str("+"),
+                                    () -> Str("-")) + "(" + expr() + ")")
                                             .stream().collect(joining()));
         }
 
         String value() {
             return FirstOf(() -> OneOrMoreChars(Character::isDigit, "digit"),
-                    () -> String("(") + expr() + String(")"));
+                    () -> Str("(") + expr() + Str(")"));
         }
     }
 
@@ -236,8 +244,8 @@ public class ParserFactoryTest {
         }
 
         String term() {
-            String result = FirstOf(() -> term() + String("b"),
-                    () -> String("b"));
+            String result = FirstOf(() -> term() + Str("b"),
+                    () -> Str("b"));
             whiteSpace();
             return result;
         }

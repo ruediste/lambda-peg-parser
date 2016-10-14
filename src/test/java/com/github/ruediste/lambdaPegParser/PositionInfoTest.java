@@ -1,8 +1,10 @@
-package com.github.ruediste1.lambdaPegParser;
+package com.github.ruediste.lambdaPegParser;
 
 import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;
+
+import com.github.ruediste.lambdaPegParser.PositionInfo;
 
 public class PositionInfoTest {
 

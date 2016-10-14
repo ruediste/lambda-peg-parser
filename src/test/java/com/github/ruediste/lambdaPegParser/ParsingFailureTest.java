@@ -1,4 +1,4 @@
-package com.github.ruediste1.lambdaPegParser;
+package com.github.ruediste.lambdaPegParser;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -9,6 +9,11 @@ import java.util.HashSet;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.github.ruediste.lambdaPegParser.DefaultParser;
+import com.github.ruediste.lambdaPegParser.DefaultParsingContext;
+import com.github.ruediste.lambdaPegParser.NoMatchException;
+import com.github.ruediste.lambdaPegParser.ParserFactory;
+
 public class ParsingFailureTest {
 
     public static class ParsingFailureParser extends DefaultParser {
@@ -18,11 +23,11 @@ public class ParsingFailureTest {
         }
 
         String anyChar() {
-            return String("a") + AnyChar();
+            return Str("a") + AnyChar();
         }
 
         String string() {
-            return String("foo");
+            return Str("foo");
         }
 
         String matchChar() {
@@ -38,11 +43,11 @@ public class ParsingFailureTest {
         }
 
         String atomic() {
-            return Atomic("atomic", () -> String("a") + String("b"));
+            return Atomic("atomic", () -> Str("a") + Str("b"));
         }
 
         String expect() {
-            return Expect("expect", () -> String("a") + String("b"));
+            return Expect("expect", () -> Str("a") + Str("b"));
         }
     }
 

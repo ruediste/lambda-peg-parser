@@ -1,4 +1,4 @@
-package com.github.ruediste1.lambdaPegParser.weaving;
+package com.github.ruediste.lambdaPegParser.weaving;
 
 import java.util.ArrayList;
 import java.util.List;

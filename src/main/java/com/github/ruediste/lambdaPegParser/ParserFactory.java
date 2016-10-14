@@ -1,4 +1,4 @@
-package com.github.ruediste1.lambdaPegParser;
+package com.github.ruediste.lambdaPegParser;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -24,10 +24,10 @@ import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.MethodNode;
 import org.objectweb.asm.util.CheckClassAdapter;
 
-import com.github.ruediste1.lambdaPegParser.weaving.LocalVariableShifter;
-import com.github.ruediste1.lambdaPegParser.weaving.MethodCallInliner;
-import com.github.ruediste1.lambdaPegParser.weaving.MinMaxLineMethodAdapter;
-import com.github.ruediste1.lambdaPegParser.weaving.PrototypeCustomizer;
+import com.github.ruediste.lambdaPegParser.weaving.LocalVariableShifter;
+import com.github.ruediste.lambdaPegParser.weaving.MethodCallInliner;
+import com.github.ruediste.lambdaPegParser.weaving.MinMaxLineMethodAdapter;
+import com.github.ruediste.lambdaPegParser.weaving.PrototypeCustomizer;
 import com.google.common.io.ByteStreams;
 import com.google.common.reflect.TypeToken;
 

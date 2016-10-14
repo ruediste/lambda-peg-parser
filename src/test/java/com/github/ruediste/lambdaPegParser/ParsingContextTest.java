@@ -1,8 +1,9 @@
-package com.github.ruediste1.lambdaPegParser;
+package com.github.ruediste.lambdaPegParser;
 
 import org.junit.Test;
 
-import com.github.ruediste1.lambdaPegParser.ParsingContext.StateSnapshot;
+import com.github.ruediste.lambdaPegParser.DefaultParsingContext;
+import com.github.ruediste.lambdaPegParser.ParsingContext.StateSnapshot;
 
 public class ParsingContextTest {
 

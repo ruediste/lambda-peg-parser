@@ -1,10 +1,14 @@
-package com.github.ruediste1.lambdaPegParser;
+package com.github.ruediste.lambdaPegParser;
 
 import static org.junit.Assert.assertEquals;
 
 import java.util.function.Supplier;
 
 import org.junit.Test;
+
+import com.github.ruediste.lambdaPegParser.DefaultParser;
+import com.github.ruediste.lambdaPegParser.DefaultParsingContext;
+import com.github.ruediste.lambdaPegParser.ParserFactory;
 
 public class PlusMinusTest {
 
@@ -32,10 +36,10 @@ public class PlusMinusTest {
         int sum() {
             int result = number();
             return ZeroOrMore((Supplier<Integer>) () -> FirstOf(() -> {
-                String("+");
+                Str("+");
                 return number();
             } , () -> {
-                String("-");
+                Str("-");
                 return -number();
             })).stream().reduce(result, (a, b) -> a + b);
         }

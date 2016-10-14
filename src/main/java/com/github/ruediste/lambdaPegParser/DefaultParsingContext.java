@@ -1,4 +1,4 @@
-package com.github.ruediste1.lambdaPegParser;
+package com.github.ruediste.lambdaPegParser;
 
 public class DefaultParsingContext extends ParsingContext<DefaultParsingState> {
 

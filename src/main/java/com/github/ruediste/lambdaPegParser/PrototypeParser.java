@@ -1,6 +1,6 @@
-package com.github.ruediste1.lambdaPegParser;
+package com.github.ruediste.lambdaPegParser;
 
-import com.github.ruediste1.lambdaPegParser.ParsingContext.StateSnapshot;
+import com.github.ruediste.lambdaPegParser.ParsingContext.StateSnapshot;
 
 /**
  * Prototype of the advice code used to transform the parser classes

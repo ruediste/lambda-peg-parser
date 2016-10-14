@@ -1,4 +1,4 @@
-package com.github.ruediste1.lambdaPegParser;
+package com.github.ruediste.lambdaPegParser;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -11,8 +11,8 @@ import java.util.PrimitiveIterator.OfInt;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
-import com.github.ruediste1.lambdaPegParser.ParsingContext.ExpectationFrame;
-import com.github.ruediste1.lambdaPegParser.ParsingContext.StateSnapshot;
+import com.github.ruediste.lambdaPegParser.ParsingContext.ExpectationFrame;
+import com.github.ruediste.lambdaPegParser.ParsingContext.StateSnapshot;
 
 /**
  * Base class for parser classes.
@@ -181,6 +181,22 @@ public class Parser<TCtx extends ParsingContext<?>> {
     }
 
     /**
+     * Match the runnable and return the result
+     */
+    public final <T> T LastValue(Runnable runnable, T result) {
+        runnable.run();
+        return result;
+    }
+
+    /**
+     * Match the runnable and return the result of the supplier.
+     */
+    public final <T> T LastValue(Runnable runnable, Supplier<? extends T> last) {
+        runnable.run();
+        return last.get();
+    }
+
+    /**
      * Tries each choice in turn until a choice can successfully be matched and
      * returns it's value. If a choice is null, it is ignored.
      */
@@ -258,8 +274,8 @@ public class Parser<TCtx extends ParsingContext<?>> {
     /**
      * Try to match the term. If it fails, succeed anyways
      */
-    public final void Optional(Runnable term) {
-        Optional(() -> {
+    public final void Opt(Runnable term) {
+        Opt(() -> {
             term.run();
             return null;
         });
@@ -269,7 +285,7 @@ public class Parser<TCtx extends ParsingContext<?>> {
      * Try to match the term. If it fails, succeed anyways. If the term matches,
      * return the result, otherwise {@link java.util.Optional#empty()}
      */
-    public final <T> Optional<T> Optional(Supplier<T> term) {
+    public final <T> Optional<T> Opt(Supplier<T> term) {
         StateSnapshot snapshot = ctx.snapshot();
         try {
             return Optional.ofNullable(term.get());
@@ -362,7 +378,7 @@ public class Parser<TCtx extends ParsingContext<?>> {
     }
 
     public final <T> Collection<T> ZeroOrMore(Supplier<T> term, Runnable separator) {
-        return Optional(() -> OneOrMore(term, separator)).orElse(Collections.emptyList());
+        return Opt(() -> OneOrMore(term, separator)).orElse(Collections.emptyList());
     }
 
     /**
@@ -446,7 +462,7 @@ public class Parser<TCtx extends ParsingContext<?>> {
     /**
      * Match a String. The matched string is returned.
      */
-    public final String String(String expected) {
+    public final String Str(String expected) {
         int startIndex = ctx.getIndex();
         if (!matchString(expected))
             throw new NoMatchException(ctx, startIndex, expected);
@@ -457,7 +473,7 @@ public class Parser<TCtx extends ParsingContext<?>> {
     /**
      * Match a String. The provided result is returned.
      */
-    public final <T> T String(String expected, T result) {
+    public final <T> T Str(String expected, T result) {
         int startIndex = ctx.getIndex();
         if (!matchString(expected))
             throw new NoMatchException(ctx, startIndex, expected);
@@ -469,7 +485,7 @@ public class Parser<TCtx extends ParsingContext<?>> {
      * Match the input at the current position against the expected string. If
      * the input matches, use the result supplier to return the result
      */
-    public final <T> T String(String expected, Supplier<T> result) {
+    public final <T> T Str(String expected, Supplier<T> result) {
         int startIndex = ctx.getIndex();
         if (!matchString(expected))
             throw new NoMatchException(ctx, startIndex, expected);
@@ -532,10 +548,17 @@ public class Parser<TCtx extends ParsingContext<?>> {
         return ctx;
     }
 
+    /**
+     * get the current position
+     */
+    public PositionInfo pos() {
+        return ctx.currentPositionInfo();
+    }
+
     @Override
     public java.lang.String toString() {
         PositionInfo info = ctx.currentPositionInfo();
         return getClass().getSimpleName() + " line: " + info.getLineNr() + "\n" + info.getLine() + "\n"
-                + info.getUnderline(' ', '^');
+                + info.getUnderline();
     }
 }
