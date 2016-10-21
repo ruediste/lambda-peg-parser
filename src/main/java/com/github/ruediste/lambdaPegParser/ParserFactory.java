@@ -12,6 +12,7 @@ import java.util.function.Function;
 
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.RemappingMethodAdapter;
@@ -241,6 +242,13 @@ public class ParserFactory {
                 continue;
             if ((Opcodes.ACC_SYNTHETIC & ruleNode.access) != 0)
                 continue;
+            boolean memo = false;
+            if (ruleNode.visibleAnnotations != null) {
+                if (ruleNode.visibleAnnotations.stream().anyMatch(x -> Type.getDescriptor(NoRule.class).equals(x.desc)))
+                    continue;
+                memo = ruleNode.visibleAnnotations.stream()
+                        .anyMatch(x -> Type.getDescriptor(Memo.class).equals(x.desc));
+            }
 
             // get minimum and maximum line numbers
             MinMaxLineMethodAdapter minMaxLineMethodAdapter = new MinMaxLineMethodAdapter(Opcodes.ASM5, null);
@@ -250,29 +258,30 @@ public class ParserFactory {
             MethodNode newNode;
             {
                 String[] exceptions = ruleNode.exceptions.toArray(new String[] {});
-
                 newNode = new MethodNode(ruleNode.access, ruleNode.name, ruleNode.desc, ruleNode.signature, exceptions);
             }
 
+            MethodVisitor mv = newNode;
+
             // replace remaining references to PrototypeParser
-            RemappingMethodAdapter remapper = new RemappingMethodAdapter(ruleNode.access, ruleNode.desc, newNode,
+            mv = new RemappingMethodAdapter(ruleNode.access, ruleNode.desc, mv,
                     new SimpleRemapper(PrototypeParser.class.getName().replace('.', '/'), internalParserClassName));
 
             // inline the call to the sampleRule method, replace it with the
             // original rule method
-            MethodCallInliner inliner = new MethodCallInliner(remapper, ruleNode, minMaxLineMethodAdapter);
+            mv = new MethodCallInliner(mv, ruleNode, minMaxLineMethodAdapter);
 
             // customize the code found in the prototype
-            PrototypeCustomizer prototypeCustomizer = new PrototypeCustomizer(inliner, ruleNode, i);
+            mv = new PrototypeCustomizer(mv, ruleNode, i, memo);
 
             // shift local variables to make space for parameters of the rule
             // method
-            LocalVariableShifter shifter = new LocalVariableShifter(Type.getArgumentTypes(ruleNode.desc).length,
-                    prototype.access, prototype.desc, prototypeCustomizer);
+            mv = new LocalVariableShifter(Type.getArgumentTypes(ruleNode.desc).length, prototype.access, prototype.desc,
+                    mv);
 
             // trigger the transformation
             prototype.instructions.resetLabels();
-            prototype.accept(shifter);
+            prototype.accept(mv);
 
             // replace the existing method
             cn.methods.set(i, newNode);

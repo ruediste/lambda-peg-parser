@@ -35,6 +35,7 @@ public class ParserFactoryTest {
             return result;
         }
 
+        @Memo
         String Expression() {
             return "(" + Term()
                     + ZeroOrMore(() -> FirstOf(() -> Str("+", " plus "), () -> Str("-", " minus ")) + Term() + ")")
@@ -139,16 +140,59 @@ public class ParserFactoryTest {
      * Grammar:
      * 
      * <pre>
+     * Expr = Value + Value / Value - Value
+     * Value = [0-9.]+
+     * </pre>
+     */
+    static class MemoizationParser extends DefaultParser {
+
+        int valueCount;
+
+        public int getValueCount() {
+            return valueCount;
+        }
+
+        public MemoizationParser(DefaultParsingContext ctx) {
+            super(ctx);
+        }
+
+        public String expr() {
+            return FirstOf(() -> value() + Str("+") + value(), () -> value() + Str("-") + value());
+        }
+
+        @Memo
+        public String value() {
+            valueCount++;
+            return OneOrMoreChars(Character::isDigit, "digit");
+        }
+    }
+
+    @Test
+    public void testMemoization() {
+        MemoizationParser parser = create(MemoizationParser.class, "1-2");
+        assertEquals("1-2", parser.expr());
+        assertEquals(2, parser.getValueCount());
+    }
+
+    /**
+     * Grammar:
+     * 
+     * <pre>
      * Expr    ← Product / Sum / Value
      * Product ← Expr (('*' / '/') Expr)+
      * Sum     ← Expr (('+' / '-') Expr)+
      * Value   ← [0-9.]+ / '(' Expr ')'
      * </pre>
      *
-     * @author ruedi
-     *
      */
     static class RecursiveParser extends DefaultParser {
+        int exprCount = 0;
+
+        @NoRule
+        public int getExprCount() {
+            return exprCount;
+        }
+
         public RecursiveParser(DefaultParsingContext ctx) {
             super(ctx);
         }
@@ -159,7 +203,9 @@ public class ParserFactoryTest {
             return result;
         }
 
+        @Memo
         String expr() {
+            exprCount++;
             return FirstOf(() -> product(), () -> sum(), () -> value());
         }
 
@@ -265,8 +311,7 @@ public class ParserFactoryTest {
 
     @Test
     public void recursive() {
-        RecursiveParser parser = create(RecursiveParser.class, "1+2*3");
-        assertEquals("(1)+((2)*(3))", parser.input());
+        assertEquals("(1)+((2)*(3))", create(RecursiveParser.class, "1+2*3").input());
     }
 
     @Test

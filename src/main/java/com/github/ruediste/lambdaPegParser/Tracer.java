@@ -96,5 +96,16 @@ public class Tracer {
             target.println("index " + e.index + " unmet expectation: " + e.expectation);
             target.flush();
         });
+
+        ctx.checkedCacheEvent.register(e -> {
+            indent();
+            target.println("checked cache with key " + e.key + " resulting in " + e.value);
+            target.flush();
+        });
+        ctx.putCacheEvent.register(e -> {
+            indent();
+            target.println("put value " + e.value + " to cache under key " + e.key);
+            target.flush();
+        });
     }
 }

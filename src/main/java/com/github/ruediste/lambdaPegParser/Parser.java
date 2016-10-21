@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.PrimitiveIterator.OfInt;
@@ -29,6 +30,47 @@ public class Parser<TCtx extends ParsingContext<?>> {
     private final TCtx ctx;
 
     protected HashMap<RuleInvocation, RuleInvocation> currentMethods = new HashMap<>();
+
+    public static class RuleCacheKey {
+        public int methodNr;
+        public Object[] args;
+        public int index;
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(Arrays.hashCode(args), index, methodNr);
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj)
+                return true;
+            if (obj == null)
+                return false;
+            if (getClass() != obj.getClass())
+                return false;
+            RuleCacheKey other = (RuleCacheKey) obj;
+            return index == other.index && methodNr == other.methodNr && Arrays.equals(args, other.args);
+        }
+
+        @Override
+        public String toString() {
+            return "(methodNr: " + methodNr + " index: " + index + " args: " + Arrays.toString(args) + ")";
+        }
+    }
+
+    public static class RuleCacheValue {
+        public Object result;
+        public Throwable exception;
+        public StateSnapshot snapshot;
+
+        @Override
+        public String toString() {
+            return "(result: " + result + " exception: " + exception + ")";
+        }
+    }
+
+    protected Map<RuleCacheKey, RuleCacheValue> ruleCache = new HashMap<>();
 
     public Parser(TCtx ctx) {
         this.ctx = ctx;

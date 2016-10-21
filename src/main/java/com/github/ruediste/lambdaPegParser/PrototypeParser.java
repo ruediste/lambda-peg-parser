@@ -47,10 +47,24 @@ public class PrototypeParser extends Parser<ParsingContext<?>> {
     }
 
     /**
+     * code following this method call will be skipped until {@link #stopMemo()}
+     * if no memoization is required
+     */
+    private static void startMemo() {
+    }
+
+    /**
+     * reeanble code emitting after the presence of a {@link #startMemo()}
+     * invocation
+     */
+    private static void stopMemo() {
+    }
+
+    /**
      * The bytecode of this method is placed in the method bodies of the rule
      * methods, around the code of the original rule method.
      */
-    public Object prototypeAdvice() {
+    public Object prototypeAdvice() throws Throwable {
         ParsingContext<?> ctx = getParsingContext();
 
         RuleLoggingInfo loggingInfo = new RuleLoggingInfo();
@@ -77,10 +91,29 @@ public class PrototypeParser extends Parser<ParsingContext<?>> {
                     ctx.recursive(loggingInfo);
                     throw ctx.noMatch();
                 }
-            } else {
-                currentMethods.put(invocation, invocation);
             }
         }
+
+        // check cache
+        startMemo();
+        RuleCacheKey cacheKey = new RuleCacheKey();
+        cacheKey.args = loggingInfo.arguments;
+        cacheKey.index = ctx.getIndex();
+        cacheKey.methodNr = getMethodNumber();
+        {
+            com.github.ruediste.lambdaPegParser.Parser.RuleCacheValue value = ruleCache.get(cacheKey);
+            ctx.checkedCache(cacheKey, value);
+            if (value != null) {
+                value.snapshot.restoreClone();
+                if (value.exception != null)
+                    throw value.exception;
+                else
+                    return value.result;
+            }
+        }
+        stopMemo();
+
+        currentMethods.put(invocation, invocation);
 
         ctx.entering(loggingInfo);
         boolean failed = false;
@@ -131,10 +164,30 @@ public class PrototypeParser extends Parser<ParsingContext<?>> {
 
             }
             loggingInfo.result = result;
+            // cache result
+            startMemo();
+            {
+                RuleCacheValue value = new RuleCacheValue();
+                value.result = result;
+                value.snapshot = ctx.snapshot();
+                ruleCache.put(cacheKey, value);
+                ctx.putCache(cacheKey, value);
+            }
+            stopMemo();
             return result;
         } catch (Throwable t) {
             ctx.failed(loggingInfo);
             failed = true;
+            // cache result
+            startMemo();
+            {
+                RuleCacheValue value = new RuleCacheValue();
+                value.snapshot = ctx.snapshot();
+                value.exception = t;
+                ruleCache.put(cacheKey, value);
+                ctx.putCache(cacheKey, value);
+            }
+            stopMemo();
             throw t;
         } finally {
             currentMethods.remove(invocation);

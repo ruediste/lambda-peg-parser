@@ -7,6 +7,9 @@ import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
+import com.github.ruediste.lambdaPegParser.Parser.RuleCacheKey;
+import com.github.ruediste.lambdaPegParser.Parser.RuleCacheValue;
+
 /**
  * Context of a parsing run.
  * 
@@ -288,6 +291,32 @@ public class ParsingContext<TState extends ParsingState<TState>> {
         retryingEvent.fire(loggingInfo);
     }
 
+    public static class CacheLoggingEvent {
+        public RuleCacheKey key;
+        public RuleCacheValue value;
+
+        public CacheLoggingEvent(RuleCacheKey key, RuleCacheValue value) {
+            super();
+            this.key = key;
+            this.value = value;
+        }
+
+    }
+
+    public final LambdaPegEvent<CacheLoggingEvent> checkedCacheEvent = new LambdaPegEvent<>();
+
+    public void checkedCache(com.github.ruediste.lambdaPegParser.Parser.RuleCacheKey cacheKey,
+            com.github.ruediste.lambdaPegParser.Parser.RuleCacheValue value) {
+        checkedCacheEvent.fire(new CacheLoggingEvent(cacheKey, value));
+    }
+
+    public final LambdaPegEvent<CacheLoggingEvent> putCacheEvent = new LambdaPegEvent<>();
+
+    public void putCache(com.github.ruediste.lambdaPegParser.Parser.RuleCacheKey cacheKey,
+            com.github.ruediste.lambdaPegParser.Parser.RuleCacheValue value) {
+        putCacheEvent.fire(new CacheLoggingEvent(cacheKey, value));
+    }
+
     @Override
     public String toString() {
         PositionInfo info = currentPositionInfo();
@@ -314,4 +343,5 @@ public class ParsingContext<TState extends ParsingState<TState>> {
         registerExpectation(expected, index);
         return noMatch();
     }
+
 }
