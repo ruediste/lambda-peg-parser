@@ -45,22 +45,19 @@ public class PlusMinusTest {
         }
 
         int number() {
-            return Integer
-                    .parseInt(OneOrMoreChars(Character::isDigit, "number"));
+            return Integer.parseInt(OneOrMoreChars(Character::isDigit, "number"));
         }
     }
 
     @Test
     public void singleNumber() {
-        assertEquals(123,
-                ParserFactory.create(PlusMinusParser.class, "123").input());
+        assertEquals(123, ParserFactory.create(PlusMinusParser.class, "123").input());
     }
 
     @Test
     public void addition() {
         DefaultParsingContext ctx = new DefaultParsingContext("1+2");
-        PlusMinusParser parser = ParserFactory.create(PlusMinusParser.class,
-                ctx);
+        PlusMinusParser parser = ParserFactory.create(PlusMinusParser.class, ctx);
         int result = parser.input();
 
         assertEquals(3, result);
@@ -68,13 +65,11 @@ public class PlusMinusTest {
 
     @Test
     public void subtraction() {
-        assertEquals(7,
-                ParserFactory.create(PlusMinusParser.class, "12-5").input());
+        assertEquals(7, ParserFactory.create(PlusMinusParser.class, "12-5").input());
     }
 
     @Test
     public void complex() {
-        assertEquals(9,
-                ParserFactory.create(PlusMinusParser.class, "12-5+2").input());
+        assertEquals(9, ParserFactory.create(PlusMinusParser.class, "12-5+2").input());
     }
 }

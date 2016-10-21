@@ -1,7 +1,6 @@
 package com.github.ruediste.lambdaPegParser;
 
-public class ParsingState<TSelf extends ParsingState<TSelf>>
-        implements Cloneable {
+public class ParsingState<TSelf extends ParsingState<TSelf>> implements Cloneable {
 
     private int index;
 

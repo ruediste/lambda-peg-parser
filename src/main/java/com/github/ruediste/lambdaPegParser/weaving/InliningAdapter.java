@@ -16,8 +16,7 @@ public class InliningAdapter extends LocalVariablesSorter {
     private final Label end;
     private LocalVariablesSorter lvs;
 
-    public InliningAdapter(LocalVariablesSorter mv, int access, String desc,
-            Label end) {
+    public InliningAdapter(LocalVariablesSorter mv, int access, String desc, Label end) {
         super(Opcodes.ASM5, access, desc, mv);
         this.end = end;
         this.lvs = mv;

@@ -35,8 +35,7 @@ public class MethodCallInliner extends GeneratorAdapter {
 
     public MethodCallInliner(MethodVisitor mv, MethodNode toBeInlined,
             MinMaxLineMethodAdapter minMaxLineMethodAdapter) {
-        super(Opcodes.ASM5, mv, toBeInlined.access, toBeInlined.name,
-                toBeInlined.desc);
+        super(Opcodes.ASM5, mv, toBeInlined.access, toBeInlined.name, toBeInlined.desc);
         this.toBeInlined = toBeInlined;
         this.minMaxLineMethodAdapter = minMaxLineMethodAdapter;
     }
@@ -56,8 +55,7 @@ public class MethodCallInliner extends GeneratorAdapter {
     }
 
     @Override
-    public void visitMethodInsn(int opcode, String owner, String name,
-            String desc, boolean itf) {
+    public void visitMethodInsn(int opcode, String owner, String name, String desc, boolean itf) {
         if (!shouldBeInlined(owner, name, desc)) {
             mv.visitMethodInsn(opcode, owner, name, desc, itf);
             return;
@@ -68,8 +66,7 @@ public class MethodCallInliner extends GeneratorAdapter {
         toBeInlined.instructions.resetLabels();
 
         // pass the to be inlined method through the inlining adapter to this
-        toBeInlined.accept(new InliningAdapter(this, toBeInlined.access,
-                toBeInlined.desc, end));
+        toBeInlined.accept(new InliningAdapter(this, toBeInlined.access, toBeInlined.desc, end));
         inlining = false;
         afterInlining = true;
 
@@ -83,13 +80,11 @@ public class MethodCallInliner extends GeneratorAdapter {
     }
 
     private boolean shouldBeInlined(String owner, String name, String desc) {
-        return "com/github/ruediste1/lambdaPegParser/PrototypeParser"
-                .equals(owner) && "sampleRule".equals(name);
+        return "com/github/ruediste1/lambdaPegParser/PrototypeParser".equals(owner) && "sampleRule".equals(name);
     }
 
     @Override
-    public void visitTryCatchBlock(Label start, Label end, Label handler,
-            String type) {
+    public void visitTryCatchBlock(Label start, Label end, Label handler, String type) {
         if (!inlining) {
             blocks.add(new CatchBlock(start, end, handler, type));
         } else {
@@ -105,8 +100,7 @@ public class MethodCallInliner extends GeneratorAdapter {
     }
 
     @Override
-    public void visitFrame(int type, int nLocal, Object[] local, int nStack,
-            Object[] stack) {
+    public void visitFrame(int type, int nLocal, Object[] local, int nStack, Object[] stack) {
         // swallow
     }
 }

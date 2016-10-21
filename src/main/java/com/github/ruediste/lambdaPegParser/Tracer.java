@@ -39,9 +39,8 @@ public class Tracer {
         String indent = indentImpl(depth);
         if (position < ctx.getIndex() || position > ctx.getIndex() + 10) {
             PositionInfo info = ctx.currentPositionInfo();
-            target.append(indent + "index " + ctx.getIndex() + " Line "
-                    + info.getLineNr() + "\n" + indent + info.getLine() + "\n"
-                    + indent + info.getUnderline(' ', '^') + "\n");
+            target.append(indent + "index " + ctx.getIndex() + " Line " + info.getLineNr() + "\n" + indent
+                    + info.getLine() + "\n" + indent + info.getUnderline(' ', '^') + "\n");
             position = ctx.getIndex();
         }
         target.append(indent);
@@ -62,8 +61,7 @@ public class Tracer {
 
         ctx.enteringEvent.register(info -> {
             indent();
-            target.println(info.parserClass.getName() + "." + info.methodName
-                    + " Entering, index: " + info.index);
+            target.println(info.parserClass.getName() + "." + info.methodName + " Entering, index: " + info.index);
             depth++;
             target.flush();
         });
@@ -71,34 +69,31 @@ public class Tracer {
         ctx.failedEvent.register(info -> {
             depth--;
             indent();
-            target.println(info.parserClass.getName() + "." + info.methodName
-                    + " Failed, index: " + info.index);
+            target.println(info.parserClass.getName() + "." + info.methodName + " Failed, index: " + info.index);
             target.flush();
         });
         ctx.leavingEvent.register(info -> {
             depth--;
             indent();
-            target.println(info.parserClass.getName() + "." + info.methodName
-                    + " Leaving, index: " + info.index);
+            target.println(info.parserClass.getName() + "." + info.methodName + " Leaving, index: " + info.index);
             target.flush();
         });
         ctx.recursiveEvent.register(info -> {
             indent(depth + 1);
-            target.println(info.parserClass.getName() + "." + info.methodName
-                    + " recursive, advancing to: " + info.index);
+            target.println(
+                    info.parserClass.getName() + "." + info.methodName + " recursive, advancing to: " + info.index);
             target.flush();
         });
         ctx.retryingEvent.register(info -> {
             indent(depth - 1);
-            target.println(info.parserClass.getName() + "." + info.methodName
-                    + " Retrying, was at index: " + info.index);
+            target.println(
+                    info.parserClass.getName() + "." + info.methodName + " Retrying, was at index: " + info.index);
             target.flush();
         });
 
         ctx.expectationRegistered.register(e -> {
             indent();
-            target.println("index " + e.index + " unmet expectation: "
-                    + e.expectation);
+            target.println("index " + e.index + " unmet expectation: " + e.expectation);
             target.flush();
         });
     }

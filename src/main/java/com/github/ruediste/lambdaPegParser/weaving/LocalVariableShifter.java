@@ -12,8 +12,7 @@ public class LocalVariableShifter extends LocalVariablesSorter {
 
     private int offset;
 
-    public LocalVariableShifter(int offset, int access, String desc,
-            MethodVisitor mv) {
+    public LocalVariableShifter(int offset, int access, String desc, MethodVisitor mv) {
         super(Opcodes.ASM5, access, desc, mv);
         this.offset = offset;
     }

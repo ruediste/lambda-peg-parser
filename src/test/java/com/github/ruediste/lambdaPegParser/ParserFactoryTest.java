@@ -45,16 +45,14 @@ public class ParserFactoryTest {
 
         String Expression() {
             return "(" + Term()
-                    + ZeroOrMore(() -> FirstOf(() -> Str("+", " plus "),
-                            () -> Str("-", " minus ")) + Term() + ")")
-                                    .stream().collect(Collectors.joining());
+                    + ZeroOrMore(() -> FirstOf(() -> Str("+", " plus "), () -> Str("-", " minus ")) + Term() + ")")
+                            .stream().collect(Collectors.joining());
         }
 
         String Term() {
             return "(" + Factor()
-                    + ZeroOrMore(() -> FirstOf(() -> Str("*", " mul "),
-                            () -> Str("/", " div")) + Factor()).stream()
-                                    .collect(Collectors.joining())
+                    + ZeroOrMore(() -> FirstOf(() -> Str("*", " mul "), () -> Str("/", " div")) + Factor()).stream()
+                            .collect(Collectors.joining())
                     + ")";
         }
 
@@ -101,8 +99,7 @@ public class ParserFactoryTest {
 
         int Expression() {
             int left = Term();
-            return FirstOf(() -> Str("+", () -> left + Term()),
-                    () -> Str("-", () -> left - Term()));
+            return FirstOf(() -> Str("+", () -> left + Term()), () -> Str("-", () -> left - Term()));
         }
 
         int Term() {
@@ -138,8 +135,7 @@ public class ParserFactoryTest {
         }
 
         int Number() {
-            return Integer.valueOf(
-                    OneOrMore(this::Digit).stream().collect(joining()));
+            return Integer.valueOf(OneOrMore(this::Digit).stream().collect(joining()));
         }
 
         String Digit() {
@@ -178,22 +174,19 @@ public class ParserFactoryTest {
         String product() {
             return Expect("product",
                     () -> "(" + expr() + ")"
-                            + OneOrMore(() -> FirstOf(() -> Str("*"),
-                                    () -> Str("/")) + "(" + expr() + ")")
-                                            .stream().collect(joining()));
+                            + OneOrMore(() -> FirstOf(() -> Str("*"), () -> Str("/")) + "(" + expr() + ")").stream()
+                                    .collect(joining()));
         }
 
         String sum() {
             return Expect("sum",
                     () -> "(" + expr() + ")"
-                            + OneOrMore(() -> FirstOf(() -> Str("+"),
-                                    () -> Str("-")) + "(" + expr() + ")")
-                                            .stream().collect(joining()));
+                            + OneOrMore(() -> FirstOf(() -> Str("+"), () -> Str("-")) + "(" + expr() + ")").stream()
+                                    .collect(joining()));
         }
 
         String value() {
-            return FirstOf(() -> OneOrMoreChars(Character::isDigit, "digit"),
-                    () -> Str("(") + expr() + Str(")"));
+            return FirstOf(() -> OneOrMoreChars(Character::isDigit, "digit"), () -> Str("(") + expr() + Str(")"));
         }
     }
 
@@ -231,8 +224,7 @@ public class ParserFactoryTest {
         }
     }
 
-    static class SmallRecursiveParser extends DefaultParser
-            implements ISmallRecursiveParser {
+    static class SmallRecursiveParser extends DefaultParser implements ISmallRecursiveParser {
         public SmallRecursiveParser(DefaultParsingContext ctx) {
             super(ctx);
         }
@@ -244,8 +236,7 @@ public class ParserFactoryTest {
         }
 
         String term() {
-            String result = FirstOf(() -> term() + Str("b"),
-                    () -> Str("b"));
+            String result = FirstOf(() -> term() + Str("b"), () -> Str("b"));
             whiteSpace();
             return result;
         }
@@ -288,8 +279,7 @@ public class ParserFactoryTest {
 
     @Test
     public void ruleWithArguments() {
-        RulesWithArgumentsParser parser = create(RulesWithArgumentsParser.class,
-                "1+2*3");
+        RulesWithArgumentsParser parser = create(RulesWithArgumentsParser.class, "1+2*3");
         parser.ruleWithArguments(1, 2);
     }
 
@@ -298,25 +288,21 @@ public class ParserFactoryTest {
         try {
             create(RecursiveParser.class, "1+2%3").input();
         } catch (NoMatchException e) {
-            assertEquals(
-                    "Error on line 1. Expected: product, sum, End Of Input\n"
-                            + "1+2%3\n" + "   ^ ",
+            assertEquals("Error on line 1. Expected: product, sum, End Of Input\n" + "1+2%3\n" + "   ^ ",
                     e.getMessage());
         }
     }
 
     @Test
     public void smallRecursive() {
-        ISmallRecursiveParser parser = ParserFactory.create(
-                SmallRecursiveParser.class, ISmallRecursiveParser.class,
+        ISmallRecursiveParser parser = ParserFactory.create(SmallRecursiveParser.class, ISmallRecursiveParser.class,
                 " b bb");
         assertEquals("bbb", parser.input());
     }
 
     @Test
     public void innerClass() {
-        InnerClassParser parser = ParserFactory.create(InnerClassParser.class,
-                " b bb");
+        InnerClassParser parser = ParserFactory.create(InnerClassParser.class, " b bb");
         parser.rule();
     }
 

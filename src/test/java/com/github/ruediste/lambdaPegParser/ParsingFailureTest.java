@@ -107,17 +107,14 @@ public class ParsingFailureTest {
         expectFailure("", parser::expect, 0, "expect");
     }
 
-    private void expectFailure(String content, Runnable runnable,
-            int failureIndex, String... expectations) {
+    private void expectFailure(String content, Runnable runnable, int failureIndex, String... expectations) {
         ctx.setContent(content);
         try {
             runnable.run();
             fail("Expected failure");
         } catch (NoMatchException e) {
-            assertEquals("failure index", failureIndex,
-                    ctx.getExpectationFrame().index);
-            assertEquals(new HashSet<String>(Arrays.asList(expectations)),
-                    ctx.getExpectationFrame().expectations);
+            assertEquals("failure index", failureIndex, ctx.getExpectationFrame().index);
+            assertEquals(new HashSet<String>(Arrays.asList(expectations)), ctx.getExpectationFrame().expectations);
         }
     }
 }
