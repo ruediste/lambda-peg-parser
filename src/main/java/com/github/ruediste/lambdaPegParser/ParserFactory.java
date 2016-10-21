@@ -8,11 +8,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Iterator;
-import java.util.List;
-
-import net.sf.cglib.proxy.Enhancer;
-import net.sf.cglib.proxy.MethodInterceptor;
-import net.sf.cglib.proxy.MethodProxy;
+import java.util.function.Function;
 
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
@@ -30,6 +26,10 @@ import com.github.ruediste.lambdaPegParser.weaving.MinMaxLineMethodAdapter;
 import com.github.ruediste.lambdaPegParser.weaving.PrototypeCustomizer;
 import com.google.common.io.ByteStreams;
 import com.google.common.reflect.TypeToken;
+
+import net.sf.cglib.proxy.Enhancer;
+import net.sf.cglib.proxy.MethodInterceptor;
+import net.sf.cglib.proxy.MethodProxy;
 
 /**
  * Factory for instances of parser classes, derived from {@link Parser}.
@@ -73,17 +73,24 @@ public class ParserFactory {
      * of an interface implemented by the parser. A fresh {@link ParsingContext}
      * is created with the supplied input.
      */
-    public static <T> T create(Class<? extends T> parserClass, Class<T> intrface, String input) {
-        return create(parserClass, intrface, createParsingContext(parserClass, input));
+    public static <C extends ParsingContext<?>, T extends Parser<C>, I> I create(Class<T> parserClass,
+            Class<I> intrface, String input) {
+        return create(parserClass, intrface, createParsingContext(parserClass).apply(input));
     }
 
     /**
      * Instantiate a weaved instance of a parser class and return it as instance
      * of an interface implemented by the parser.
      */
-    @SuppressWarnings("unchecked")
-    public static <T> T create(Class<? extends T> cls, Class<T> intrface, ParsingContext<?> ctx) {
-        return (T) instantiateWeavedParser(ctx, cls.getName());
+    public static <C extends ParsingContext<?>, T extends Parser<C>, I> I create(Class<? extends T> cls,
+            Class<I> intrface, C ctx) {
+        return create(cls, intrface).apply(ctx);
+    }
+
+    private static <C extends ParsingContext<?>, T extends Parser<C>, I> Function<C, I> create(Class<T> cls,
+            Class<I> intrface) {
+        Function<ParsingContext<?>, Object> func = instantiateWeavedParser(cls);
+        return ctx -> intrface.cast(func.apply(ctx));
     }
 
     /**
@@ -91,9 +98,14 @@ public class ParserFactory {
      * delegating to the instantiated parser. A fresh {@link ParsingContext} is
      * created with the supplied input.
      */
-    public static <T extends Parser<?>> T create(Class<T> cls, String input) {
-        ParsingContext<?> ctx = createParsingContext(cls, input);
+    public static <C extends ParsingContext<?>, T extends Parser<C>> T create(Class<T> cls, String input) {
+        C ctx = createParsingContext(cls).apply(input);
         return create(cls, ctx);
+    }
+
+    public static <C extends ParsingContext<?>, T extends Parser<C>> C createParsingContext(Class<T> parserClass,
+            String input) {
+        return createParsingContext(parserClass).apply(input);
     }
 
     /**
@@ -102,81 +114,94 @@ public class ParserFactory {
      * class. The context has to have a constructor with a single {@link String}
      * parameter.
      */
-    public static ParsingContext<?> createParsingContext(Class<?> parserClass, String input) {
-        ParsingContext<?> ctx;
+    @SuppressWarnings("unchecked")
+    public static <C extends ParsingContext<?>, T extends Parser<C>> Function<String, C> createParsingContext(
+            Class<T> parserClass) {
         try {
-            ctx = (ParsingContext<?>) getParsingContextType(parserClass).getConstructor(String.class)
-                    .newInstance(input);
-        } catch (InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException
-                | NoSuchMethodException | SecurityException e) {
+            Constructor<?> constructor = getParsingContextType(parserClass).getConstructor(String.class);
+            return input -> {
+                try {
+                    return (C) constructor.newInstance(input);
+                } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
+                    throw new RuntimeException("Error while creating instance of parser context", e);
+                }
+            };
+        } catch (IllegalArgumentException | NoSuchMethodException | SecurityException e) {
             throw new RuntimeException("Error while instantiating parsing context", e);
         }
-        return ctx;
+    }
+
+    public static <C extends ParsingContext<?>, T extends Parser<C>> T create(Class<T> cls, C ctx) {
+        return create(cls).apply(ctx);
     }
 
     /**
      * Instantiate a weaved instance of a parser class and return a proxy
      * delegating to the instantiated parser.
      */
-    @SuppressWarnings("unchecked")
-    public static <T extends Parser<?>> T create(Class<T> cls, ParsingContext<?> ctx) {
-        String parserClassNasme = cls.getName();
-        Object weavedParser = instantiateWeavedParser(ctx, parserClassNasme);
+    public static <C extends ParsingContext<?>, T extends Parser<C>> Function<C, T> create(Class<T> cls) {
+        Function<ParsingContext<?>, Object> weavedParserFactory = instantiateWeavedParser(cls);
+        Class<?> parsingContextType = getParsingContextType(cls);
 
-        Enhancer e = new Enhancer();
-        e.setSuperclass(cls);
+        return ctx -> {
+            Object weavedParser = weavedParserFactory.apply(ctx);
+            Enhancer e = new Enhancer();
+            e.setSuperclass(cls);
 
-        e.setCallback(new MethodInterceptor() {
+            e.setCallback(new MethodInterceptor() {
 
-            @Override
-            public Object intercept(Object obj, Method method, Object[] args, MethodProxy proxy) throws Throwable {
-                Method m = findMethod(weavedParser.getClass().getMethods(), method.getName(),
-                        method.getParameterTypes());
-                if (m == null) {
-                    m = findMethod(weavedParser.getClass(), method.getName(), method.getParameterTypes());
+                @Override
+                public Object intercept(Object obj, Method method, Object[] args, MethodProxy proxy) throws Throwable {
+                    Method m = findMethod(weavedParser.getClass().getMethods(), method.getName(),
+                            method.getParameterTypes());
+                    if (m == null) {
+                        m = findMethod(weavedParser.getClass(), method.getName(), method.getParameterTypes());
+                    }
+                    m.setAccessible(true);
+                    try {
+                        return m.invoke(weavedParser, args);
+                    } catch (InvocationTargetException e) {
+                        throw e.getCause();
+                    }
                 }
-                m.setAccessible(true);
-                try {
-                    return m.invoke(weavedParser, args);
-                } catch (InvocationTargetException e) {
-                    throw e.getCause();
-                }
-            }
 
-            private Method findMethod(Class<?> cls, String methodName, Class<?>[] parameterTypes)
-                    throws NoSuchMethodException, SecurityException {
-                if (cls == null)
+                private Method findMethod(Class<?> cls, String methodName, Class<?>[] parameterTypes)
+                        throws NoSuchMethodException, SecurityException {
+                    if (cls == null)
+                        return null;
+                    Method m = findMethod(cls.getDeclaredMethods(), methodName, parameterTypes);
+                    return m == null ? findMethod(cls.getSuperclass(), methodName, parameterTypes) : m;
+                }
+
+                private Method findMethod(Method[] candidates, String methodName, Class<?>[] parameterTypes) {
+                    for (Method m : candidates) {
+                        if (methodName.equals(m.getName()) && Arrays.equals(parameterTypes, m.getParameterTypes()))
+                            return m;
+                    }
                     return null;
-                Method m = findMethod(cls.getDeclaredMethods(), methodName, parameterTypes);
-                return m == null ? findMethod(cls.getSuperclass(), methodName, parameterTypes) : m;
-            }
-
-            private Method findMethod(Method[] candidates, String methodName, Class<?>[] parameterTypes) {
-                for (Method m : candidates) {
-                    if (methodName.equals(m.getName()) && Arrays.equals(parameterTypes, m.getParameterTypes()))
-                        return m;
                 }
-                return null;
-            }
-        });
+            });
 
-        return (T) e.create(new Class[] { getParsingContextType(cls) }, new Object[] { ctx });
+            return cls.cast(e.create(new Class[] { parsingContextType }, new Object[] { ctx }));
+        };
 
     }
 
-    private static Object instantiateWeavedParser(ParsingContext<?> ctx, String parserClassNasme) {
-
-        Class<?> weavedClass;
+    private static Function<ParsingContext<?>, Object> instantiateWeavedParser(Class<?> parserClass) {
         try {
-            weavedClass = new WeavedClassLoader(ParserFactory.class.getClassLoader(), parserClassNasme,
-                    weaveClass(parserClassNasme)).loadClass(parserClassNasme);
-
+            String parserClassName = parserClass.getName();
+            Class<?> weavedClass = new WeavedClassLoader(parserClass.getClassLoader(), parserClassName,
+                    weaveClass(parserClass)).loadClass(parserClassName);
             Constructor<?> constructor = weavedClass.getConstructor(getParsingContextType(weavedClass));
             constructor.setAccessible(true);
-            Object weavedParser = constructor.newInstance(ctx);
-            return weavedParser;
-        } catch (ClassNotFoundException | NoSuchMethodException | SecurityException | InstantiationException
-                | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+            return ctx -> {
+                try {
+                    return constructor.newInstance(ctx);
+                } catch (Exception e) {
+                    throw new RuntimeException("Error while instantiating parser class", e);
+                }
+            };
+        } catch (ClassNotFoundException | NoSuchMethodException | SecurityException | IllegalArgumentException e) {
             throw new RuntimeException("Error while weaving and instantiating parser class", e);
         }
     }
@@ -185,10 +210,9 @@ public class ParserFactory {
         return TypeToken.of(parserClass).resolveType(Parser.class.getTypeParameters()[0]).getRawType();
     }
 
-    @SuppressWarnings("unchecked")
-    private static byte[] weaveClass(String parserClassName) {
-        InputStream in = ParserFactory.class.getClassLoader()
-                .getResourceAsStream(parserClassName.replace('.', '/') + ".class");
+    private static byte[] weaveClass(Class<?> parserClass) {
+        String internalParserClassName = parserClass.getName().replace('.', '/');
+        InputStream in = parserClass.getClassLoader().getResourceAsStream(internalParserClassName + ".class");
         ClassReader classReader;
         try {
             classReader = new ClassReader(in);
@@ -210,7 +234,7 @@ public class ParserFactory {
 
         // modify methods
         for (int i = 0; i < cn.methods.size(); i++) {
-            MethodNode ruleNode = (MethodNode) cn.methods.get(i);
+            MethodNode ruleNode = cn.methods.get(i);
             if ("<init>".equals(ruleNode.name))
                 continue;
             if ((Opcodes.ACC_STATIC & ruleNode.access) != 0)
@@ -225,15 +249,14 @@ public class ParserFactory {
             // prepare the new method node
             MethodNode newNode;
             {
-                String[] exceptions = ((List<String>) ruleNode.exceptions).toArray(new String[] {});
+                String[] exceptions = ruleNode.exceptions.toArray(new String[] {});
 
                 newNode = new MethodNode(ruleNode.access, ruleNode.name, ruleNode.desc, ruleNode.signature, exceptions);
             }
 
             // replace remaining references to PrototypeParser
             RemappingMethodAdapter remapper = new RemappingMethodAdapter(ruleNode.access, ruleNode.desc, newNode,
-                    new SimpleRemapper(PrototypeParser.class.getName().replace('.', '/'),
-                            parserClassName.replace('.', '/')));
+                    new SimpleRemapper(PrototypeParser.class.getName().replace('.', '/'), internalParserClassName));
 
             // inline the call to the sampleRule method, replace it with the
             // original rule method

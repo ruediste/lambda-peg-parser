@@ -10,6 +10,8 @@ import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 import org.objectweb.asm.tree.MethodNode;
 
+import com.github.ruediste.lambdaPegParser.PrototypeParser;
+
 public class MethodCallInliner extends GeneratorAdapter {
     public class CatchBlock {
 
@@ -80,7 +82,7 @@ public class MethodCallInliner extends GeneratorAdapter {
     }
 
     private boolean shouldBeInlined(String owner, String name, String desc) {
-        return "com/github/ruediste1/lambdaPegParser/PrototypeParser".equals(owner) && "sampleRule".equals(name);
+        return Type.getInternalName(PrototypeParser.class).equals(owner) && "sampleRule".equals(name);
     }
 
     @Override

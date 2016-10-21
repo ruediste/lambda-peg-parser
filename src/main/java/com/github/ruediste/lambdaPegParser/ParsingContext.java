@@ -55,7 +55,7 @@ public class ParsingContext<TState extends ParsingState<TState>> {
      */
     public int peek() {
         if (!hasNext())
-            throw new NoMatchException();
+            throw noMatch();
         return content.codePointAt(getIndex());
     }
 
@@ -64,7 +64,7 @@ public class ParsingContext<TState extends ParsingState<TState>> {
      */
     public int next() {
         if (!hasNext()) {
-            throw new NoMatchException();
+            throw noMatch();
         }
         int result = content.codePointAt(getIndex());
         state.setIndex(getIndex() + Character.charCount(result));
@@ -183,7 +183,7 @@ public class ParsingContext<TState extends ParsingState<TState>> {
      * {@link ExpectationFrame}
      */
     public void registerExpectation(String expectation) {
-        registerExpectation(getIndex(), expectation);
+        registerExpectation(expectation, getIndex());
     }
 
     public static class Expectation {
@@ -204,7 +204,7 @@ public class ParsingContext<TState extends ParsingState<TState>> {
      * Register an expectation at the supplied index with the current
      * {@link ExpectationFrame}
      */
-    public void registerExpectation(int index, String expectation) {
+    public void registerExpectation(String expectation, int index) {
         expectationFrame.registerExpectation(index, expectation);
         expectationRegistered.fire(new Expectation(index, expectation));
     }
@@ -297,5 +297,21 @@ public class ParsingContext<TState extends ParsingState<TState>> {
 
     public PositionInfo currentPositionInfo() {
         return new PositionInfo(content, getIndex());
+    }
+
+    // private NoMatchException exception = new NoMatchException(this);
+
+    public NoMatchException noMatch() {
+        throw new NoMatchException(this);
+        // return exception;
+    }
+
+    public NoMatchException noMatch(String expected) {
+        return noMatch(expected, getIndex());
+    }
+
+    public NoMatchException noMatch(String expected, int index) {
+        registerExpectation(expected, index);
+        return noMatch();
     }
 }

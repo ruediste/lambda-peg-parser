@@ -75,7 +75,7 @@ public class PrototypeParser extends Parser<ParsingContext<?>> {
                     return existing.seed.value;
                 } else {
                     ctx.recursive(loggingInfo);
-                    throw new NoMatchException();
+                    throw ctx.noMatch();
                 }
             } else {
                 currentMethods.put(invocation, invocation);

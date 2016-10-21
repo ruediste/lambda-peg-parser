@@ -6,6 +6,8 @@ import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 import org.objectweb.asm.tree.MethodNode;
 
+import com.github.ruediste.lambdaPegParser.PrototypeParser;
+
 public class PrototypeCustomizer extends GeneratorAdapter {
 
     private int ruleMethodNr;
@@ -19,7 +21,8 @@ public class PrototypeCustomizer extends GeneratorAdapter {
 
     @Override
     public void visitMethodInsn(int opcode, String owner, String name, String desc, boolean itf) {
-        if ("com/github/ruediste1/lambdaPegParser/PrototypeParser".equals(owner)) {
+
+        if (Type.getInternalName(PrototypeParser.class).equals(owner)) {
             if ("getMethodNumber".equals(name)) {
                 push(ruleMethodNr);
             } else if ("getMethodName".equals(name)) {

@@ -100,7 +100,7 @@ public class Parser<TCtx extends ParsingContext<?>> {
      */
     public final void EOI() {
         if (ctx.hasNext()) {
-            throw new NoMatchException(ctx, ctx.getIndex(), "End Of Input");
+            throw ctx.noMatch("End Of Input");
         }
     }
 
@@ -121,7 +121,7 @@ public class Parser<TCtx extends ParsingContext<?>> {
             snapshot.restore();
         }
         if (success)
-            throw new NoMatchException(ctx, ctx.getIndex(), expectation);
+            throw ctx.noMatch(expectation);
     }
 
     /**
@@ -166,7 +166,24 @@ public class Parser<TCtx extends ParsingContext<?>> {
                 snapshot.restore();
             }
         }
-        throw new NoMatchException();
+        throw ctx.noMatch();
+    }
+
+    /**
+     * Return the first provided value
+     */
+    public final <T> T FirstValue(T first, Object... others) {
+        return first;
+    }
+
+    /**
+     * Run the given runnables and return the first provided value
+     */
+    public final <T> T FirstValue(T first, Runnable... runnables) {
+        for (Runnable runnable : runnables) {
+            runnable.run();
+        }
+        return first;
     }
 
     /**
@@ -213,7 +230,7 @@ public class Parser<TCtx extends ParsingContext<?>> {
                 snapshot.restore();
             }
         }
-        throw new NoMatchException();
+        throw ctx.noMatch();
     }
 
     /**
@@ -232,7 +249,7 @@ public class Parser<TCtx extends ParsingContext<?>> {
                 snapshot.restore();
             }
         }
-        throw new NoMatchException();
+        throw ctx.noMatch();
     }
 
     /**
@@ -303,7 +320,7 @@ public class Parser<TCtx extends ParsingContext<?>> {
     public final String OneOrMoreChars(Predicate<Integer> criteria, String expectation) {
         String result = ZeroOrMoreChars(criteria, expectation);
         if (result.isEmpty()) {
-            throw new NoMatchException(ctx, ctx.getIndex(), expectation);
+            throw ctx.noMatch(expectation);
         }
         return result;
     }
@@ -341,7 +358,7 @@ public class Parser<TCtx extends ParsingContext<?>> {
             }
         }
         if (parts.isEmpty()) {
-            throw new NoMatchException();
+            throw ctx.noMatch();
         }
         return parts;
     }
@@ -363,7 +380,7 @@ public class Parser<TCtx extends ParsingContext<?>> {
             }
         }
         if (!found) {
-            throw new NoMatchException();
+            throw ctx.noMatch();
         }
     }
 
@@ -439,7 +456,7 @@ public class Parser<TCtx extends ParsingContext<?>> {
      */
     public final String AnyChar() {
         if (!ctx.hasNext())
-            throw new NoMatchException(ctx, "any character");
+            throw ctx.noMatch("any character");
         return new String(Character.toChars(ctx.next()));
     }
 
@@ -465,7 +482,7 @@ public class Parser<TCtx extends ParsingContext<?>> {
     public final String Str(String expected) {
         int startIndex = ctx.getIndex();
         if (!matchString(expected))
-            throw new NoMatchException(ctx, startIndex, expected);
+            throw ctx.noMatch(expected, startIndex);
         else
             return expected;
     }
@@ -476,7 +493,7 @@ public class Parser<TCtx extends ParsingContext<?>> {
     public final <T> T Str(String expected, T result) {
         int startIndex = ctx.getIndex();
         if (!matchString(expected))
-            throw new NoMatchException(ctx, startIndex, expected);
+            throw ctx.noMatch(expected, startIndex);
         else
             return result;
     }
@@ -488,7 +505,7 @@ public class Parser<TCtx extends ParsingContext<?>> {
     public final <T> T Str(String expected, Supplier<T> result) {
         int startIndex = ctx.getIndex();
         if (!matchString(expected))
-            throw new NoMatchException(ctx, startIndex, expected);
+            throw ctx.noMatch(expected, startIndex);
         else
             return result.get();
     }
@@ -506,7 +523,7 @@ public class Parser<TCtx extends ParsingContext<?>> {
                 return new String(Character.toChars(cp));
             }
         }
-        throw new NoMatchException(ctx, startIndex, expectation);
+        throw ctx.noMatch(expectation, startIndex);
 
     }
 
@@ -521,7 +538,7 @@ public class Parser<TCtx extends ParsingContext<?>> {
                 return String.valueOf(Character.toChars(cp));
             }
         }
-        throw new NoMatchException(ctx, startIndex, "any char except " + chars);
+        throw ctx.noMatch("any char except " + chars, startIndex);
     }
 
     /**
@@ -541,7 +558,7 @@ public class Parser<TCtx extends ParsingContext<?>> {
         sb.appendCodePoint(first);
         sb.append(" and ");
         sb.appendCodePoint(last);
-        throw new NoMatchException(ctx, startIndex, sb.toString());
+        throw ctx.noMatch(sb.toString(), startIndex);
     }
 
     public TCtx getParsingContext() {

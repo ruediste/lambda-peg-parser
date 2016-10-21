@@ -9,14 +9,6 @@ import java.util.stream.Collectors;
 
 import org.junit.Test;
 
-import com.github.ruediste.lambdaPegParser.DefaultParser;
-import com.github.ruediste.lambdaPegParser.DefaultParsingContext;
-import com.github.ruediste.lambdaPegParser.NoMatchException;
-import com.github.ruediste.lambdaPegParser.Parser;
-import com.github.ruediste.lambdaPegParser.ParserFactory;
-import com.github.ruediste.lambdaPegParser.ParsingContext;
-import com.github.ruediste.lambdaPegParser.Tracer;
-
 public class ParserFactoryTest {
 
     /**
@@ -246,8 +238,8 @@ public class ParserFactoryTest {
         }
     }
 
-    private <T extends Parser<?>> T create(Class<T> cls, String input) {
-        ParsingContext<?> ctx = ParserFactory.createParsingContext(cls, input);
+    private <C extends ParsingContext<?>, T extends Parser<C>> T create(Class<T> cls, String input) {
+        C ctx = ParserFactory.createParsingContext(cls).apply(input);
         T parser = ParserFactory.create(cls, ctx);
         new Tracer(ctx, System.out);
         return parser;
@@ -288,7 +280,7 @@ public class ParserFactoryTest {
         try {
             create(RecursiveParser.class, "1+2%3").input();
         } catch (NoMatchException e) {
-            assertEquals("Error on line 1. Expected: product, sum, End Of Input\n" + "1+2%3\n" + "   ^ ",
+            assertEquals("Error on line 1. Expected: product, sum, End Of Input instead of '%'\n" + "1+2%3\n" + "   ^ ",
                     e.getMessage());
         }
     }
