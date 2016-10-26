@@ -72,8 +72,9 @@ public class PrototypeParser extends Parser<ParsingContext<?>> {
         loggingInfo.methodName = getMethodName();
         loggingInfo.parserClass = getClass();
         loggingInfo.argumentTypes = getArgumentTypes();
+        boolean oldResultIsRecursive = resultIsRecursive;
 
-        RuleInvocation invocation = new RuleInvocation(getMethodNumber(), loggingInfo.arguments, ctx.getIndex());
+        RuleInvocation invocation = new RuleInvocation(getMethodNumber(), loggingInfo.arguments, ctx.stateClone());
 
         // check for left recursions
         {
@@ -82,6 +83,7 @@ public class PrototypeParser extends Parser<ParsingContext<?>> {
                 // We ran into a left recursion.
                 // Mark the fact and return the seed if present
                 existing.recursive = true;
+                resultIsRecursive = true;
                 if (existing.seed != null) {
                     existing.seed.snapshot.restoreClone();
                     loggingInfo.result = existing.seed.value;
@@ -98,7 +100,7 @@ public class PrototypeParser extends Parser<ParsingContext<?>> {
         startMemo();
         RuleCacheKey cacheKey = new RuleCacheKey();
         cacheKey.args = loggingInfo.arguments;
-        cacheKey.index = ctx.getIndex();
+        cacheKey.state = ctx.stateClone();
         cacheKey.methodNr = getMethodNumber();
         {
             com.github.ruediste.lambdaPegParser.Parser.RuleCacheValue value = ruleCache.get(cacheKey);
@@ -114,6 +116,7 @@ public class PrototypeParser extends Parser<ParsingContext<?>> {
         stopMemo();
 
         currentMethods.put(invocation, invocation);
+        resultIsRecursive = false;
 
         ctx.entering(loggingInfo);
         boolean failed = false;
@@ -147,7 +150,6 @@ public class PrototypeParser extends Parser<ParsingContext<?>> {
                         // use last seed
                         invocation.seed.snapshot.restore();
                         result = invocation.seed.value;
-
                         break;
                     }
 
@@ -166,7 +168,7 @@ public class PrototypeParser extends Parser<ParsingContext<?>> {
             loggingInfo.result = result;
             // cache result
             startMemo();
-            {
+            if (!resultIsRecursive) {
                 RuleCacheValue value = new RuleCacheValue();
                 value.result = result;
                 value.snapshot = ctx.snapshot();
@@ -180,7 +182,7 @@ public class PrototypeParser extends Parser<ParsingContext<?>> {
             failed = true;
             // cache result
             startMemo();
-            {
+            if (!resultIsRecursive) {
                 RuleCacheValue value = new RuleCacheValue();
                 value.snapshot = ctx.snapshot();
                 value.exception = t;
@@ -190,6 +192,7 @@ public class PrototypeParser extends Parser<ParsingContext<?>> {
             stopMemo();
             throw t;
         } finally {
+            resultIsRecursive |= oldResultIsRecursive;
             currentMethods.remove(invocation);
             if (!failed) {
                 ctx.leaving(loggingInfo);

@@ -34,11 +34,11 @@ public class Parser<TCtx extends ParsingContext<?>> {
     public static class RuleCacheKey {
         public int methodNr;
         public Object[] args;
-        public int index;
+        public ParsingState<?> state;
 
         @Override
         public int hashCode() {
-            return Objects.hash(Arrays.hashCode(args), index, methodNr);
+            return Objects.hash(Arrays.hashCode(args), state, methodNr);
         }
 
         @Override
@@ -50,12 +50,12 @@ public class Parser<TCtx extends ParsingContext<?>> {
             if (getClass() != obj.getClass())
                 return false;
             RuleCacheKey other = (RuleCacheKey) obj;
-            return index == other.index && methodNr == other.methodNr && Arrays.equals(args, other.args);
+            return Objects.equals(state, other.state) && methodNr == other.methodNr && Arrays.equals(args, other.args);
         }
 
         @Override
         public String toString() {
-            return "(methodNr: " + methodNr + " index: " + index + " args: " + Arrays.toString(args) + ")";
+            return "(methodNr: " + methodNr + " state: " + state + " args: " + Arrays.toString(args) + ")";
         }
     }
 
@@ -71,6 +71,13 @@ public class Parser<TCtx extends ParsingContext<?>> {
     }
 
     protected Map<RuleCacheKey, RuleCacheValue> ruleCache = new HashMap<>();
+
+    /**
+     * Flag set to true when a recursive invocation is encountered. While true,
+     * no rule results will be cached. Cleared when handling the recursive
+     * invocation.
+     */
+    protected boolean resultIsRecursive;
 
     public Parser(TCtx ctx) {
         this.ctx = ctx;
@@ -98,20 +105,20 @@ public class Parser<TCtx extends ParsingContext<?>> {
     protected static class RuleInvocation {
         public int method;
         public Object[] args;
-        public int position;
 
         public boolean recursive;
         public Seed seed;
+        private ParsingState<?> state;
 
         @Override
         public String toString() {
-            return "RuleInvocation [method=" + method + ", args=" + Arrays.toString(args) + ", position=" + position
+            return "RuleInvocation [method=" + method + ", args=" + Arrays.toString(args) + ", state=" + state
                     + ", recursive=" + recursive + ", seed=" + seed + "]";
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(method, Arrays.hashCode(args), position);
+            return Objects.hash(method, Arrays.hashCode(args), state);
         }
 
         @Override
@@ -126,14 +133,15 @@ public class Parser<TCtx extends ParsingContext<?>> {
                 return false;
             }
             RuleInvocation other = (RuleInvocation) obj;
-            return method == other.method && Arrays.equals(args, other.args) && position == other.position;
+            return method == other.method && Arrays.equals(args, other.args) && Objects.equals(state, other.state);
         }
 
-        public RuleInvocation(int method, Object[] args, int position) {
+        public RuleInvocation(int method, Object[] args, ParsingState<?> state) {
             super();
             this.method = method;
             this.args = args;
-            this.position = position;
+            this.state = state;
+            this.state = state;
         }
     }
 
@@ -331,6 +339,23 @@ public class Parser<TCtx extends ParsingContext<?>> {
     }
 
     /**
+     * Evaluate a term with a given precedence level. While evaluating the term,
+     * further precedence restrictions need a higher level to succeed.
+     */
+    public final <T> T Precedence(int level, Supplier<T> term) {
+        ParsingState<?> state = ctx.state();
+        if (state.minPrecedenceLevel > level)
+            throw ctx.noMatch("term of precedence above or equal " + state.minPrecedenceLevel);
+        int old = state.minPrecedenceLevel;
+        ctx.state().minPrecedenceLevel = level;
+        try {
+            return term.get();
+        } finally {
+            ctx.state().minPrecedenceLevel = old;
+        }
+    }
+
+    /**
      * Try to match the term. If it fails, succeed anyways
      */
     public final void Opt(Runnable term) {
@@ -485,10 +510,13 @@ public class Parser<TCtx extends ParsingContext<?>> {
         try {
             return term.get();
         } catch (NoMatchException e) {
-            oldFrame.registerExpectation(newFrame.index, expectation);
+            ctx.setExpectationFrame(oldFrame);
+            oldFrame = null;
+            ctx.registerExpectation(expectation, newFrame.index);
             throw e;
         } finally {
-            ctx.setExpectationFrame(oldFrame);
+            if (oldFrame != null)
+                ctx.setExpectationFrame(oldFrame);
         }
     }
 

@@ -141,6 +141,7 @@ public class ParserFactoryTest {
      * 
      * <pre>
      * Expr = Value + Value / Value - Value
+     * ExprRec = ExprRec + ExprRec / ExprRec - ExprRec / Value
      * Value = [0-9.]+
      * </pre>
      */
@@ -160,6 +161,17 @@ public class ParserFactoryTest {
             return FirstOf(() -> value() + Str("+") + value(), () -> value() + Str("-") + value());
         }
 
+        public String exprRec() {
+            return terminalRec();
+        }
+
+        @Memo
+        public String terminalRec() {
+            return FirstOf(() -> exprRec() + Str("+") + exprRec(), () -> exprRec() + Str("-") + exprRec(),
+                    () -> value());
+
+        }
+
         @Memo
         public String value() {
             valueCount++;
@@ -171,6 +183,13 @@ public class ParserFactoryTest {
     public void testMemoization() {
         MemoizationParser parser = create(MemoizationParser.class, "1-2");
         assertEquals("1-2", parser.expr());
+        assertEquals(2, parser.getValueCount());
+    }
+
+    @Test
+    public void testMemoizationRec() {
+        MemoizationParser parser = create(MemoizationParser.class, "1+2");
+        assertEquals("1+2", parser.exprRec());
         assertEquals(2, parser.getValueCount());
     }
 
@@ -186,12 +205,6 @@ public class ParserFactoryTest {
      *
      */
     static class RecursiveParser extends DefaultParser {
-        int exprCount = 0;
-
-        @NoRule
-        public int getExprCount() {
-            return exprCount;
-        }
 
         public RecursiveParser(DefaultParsingContext ctx) {
             super(ctx);
@@ -203,24 +216,21 @@ public class ParserFactoryTest {
             return result;
         }
 
-        @Memo
         String expr() {
-            exprCount++;
-            return FirstOf(() -> product(), () -> sum(), () -> value());
+            return FirstOf(() -> Precedence(1, this::sum), () -> Precedence(2, this::product), this::value);
         }
 
         String product() {
-            return Expect("product",
-                    () -> "(" + expr() + ")"
-                            + OneOrMore(() -> FirstOf(() -> Str("*"), () -> Str("/")) + "(" + expr() + ")").stream()
-                                    .collect(joining()));
+            return "(" + expr() + ")"
+                    + OneOrMore(
+                            () -> Expect("product", () -> FirstOf(() -> Str("*"), () -> Str("/")) + "(" + expr() + ")"))
+                                    .stream().collect(joining());
         }
 
         String sum() {
-            return Expect("sum",
-                    () -> "(" + expr() + ")"
-                            + OneOrMore(() -> FirstOf(() -> Str("+"), () -> Str("-")) + "(" + expr() + ")").stream()
-                                    .collect(joining()));
+            return "(" + expr() + ")"
+                    + OneOrMore(() -> Expect("sum", () -> FirstOf(() -> Str("+"), () -> Str("-")) + "(" + expr() + ")"))
+                            .stream().collect(joining());
         }
 
         String value() {
@@ -312,6 +322,7 @@ public class ParserFactoryTest {
     @Test
     public void recursive() {
         assertEquals("(1)+((2)*(3))", create(RecursiveParser.class, "1+2*3").input());
+        assertEquals("((1)*(2))+(3)", create(RecursiveParser.class, "1*2+3").input());
     }
 
     @Test
@@ -325,7 +336,7 @@ public class ParserFactoryTest {
         try {
             create(RecursiveParser.class, "1+2%3").input();
         } catch (NoMatchException e) {
-            assertEquals("Error on line 1. Expected: product, sum, End Of Input instead of '%'\n" + "1+2%3\n" + "   ^ ",
+            assertEquals("Error on line 1. Expected: sum, End Of Input instead of '%'\n" + "1+2%3\n" + "   ^ ",
                     e.getMessage());
         }
     }

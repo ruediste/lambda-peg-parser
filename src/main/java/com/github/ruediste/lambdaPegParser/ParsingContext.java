@@ -70,8 +70,16 @@ public class ParsingContext<TState extends ParsingState<TState>> {
             throw noMatch();
         }
         int result = content.codePointAt(getIndex());
-        state.setIndex(getIndex() + Character.charCount(result));
+        state.index = getIndex() + Character.charCount(result);
         return result;
+    }
+
+    public TState stateClone() {
+        return state.clone();
+    }
+
+    public TState state() {
+        return state;
     }
 
     /**
@@ -85,7 +93,7 @@ public class ParsingContext<TState extends ParsingState<TState>> {
      * Return the current input position
      */
     public int getIndex() {
-        return state.getIndex();
+        return state.index;
     }
 
     /**
