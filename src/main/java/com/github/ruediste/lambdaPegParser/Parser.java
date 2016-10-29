@@ -339,13 +339,60 @@ public class Parser<TCtx extends ParsingContext<?>> {
     }
 
     /**
-     * Evaluate a term with a given precedence level. While evaluating the term,
-     * further precedence restrictions need a higher level to succeed.
+     * Check if the given precedence level is equal or greater than current
+     * minimum precedence level. If true, evaluate the term with the given
+     * precedence level as new minimum precedence level and return the result.
+     * Otherwise the match fails.
      */
-    public final <T> T Precedence(int level, Supplier<T> term) {
+    public final <T> T PrecedenceGTE(int level, Supplier<T> term) {
         ParsingState<?> state = ctx.state();
-        if (state.minPrecedenceLevel > level)
-            throw ctx.noMatch("term of precedence above or equal " + state.minPrecedenceLevel);
+        if (state.minPrecedenceLevel <= level) {
+            int old = state.minPrecedenceLevel;
+            ctx.state().minPrecedenceLevel = level;
+            try {
+                return term.get();
+            } finally {
+                ctx.state().minPrecedenceLevel = old;
+            }
+        } else
+            throw ctx.noMatch();
+    }
+
+    /**
+     * Check if the given precedence level greater than the current minimum
+     * precedence level. If true, evaluate the term with the given precedence
+     * level as new minimum precedence level and return the result. Otherwise
+     * the match fails.
+     */
+    public final <T> T PrecedenceGT(int level, Supplier<T> term) {
+        ParsingState<?> state = ctx.state();
+        if (state.minPrecedenceLevel < level) {
+            int old = state.minPrecedenceLevel;
+            ctx.state().minPrecedenceLevel = level;
+            try {
+                return term.get();
+            } finally {
+                ctx.state().minPrecedenceLevel = old;
+            }
+        } else
+            throw ctx.noMatch();
+    }
+
+    /**
+     * Evaluate the term with the minimum precedence level cleared (set to 0)
+     * and return the result.
+     */
+    public final <T> T PrecedenceClear(Supplier<T> term) {
+        return PrecedenceSet(0, term);
+
+    }
+
+    /**
+     * Evaluate the term with the given precedence level as new minimum
+     * precedence level and return the result.
+     */
+    public final <T> T PrecedenceSet(int level, Supplier<T> term) {
+        ParsingState<?> state = ctx.state();
         int old = state.minPrecedenceLevel;
         ctx.state().minPrecedenceLevel = level;
         try {

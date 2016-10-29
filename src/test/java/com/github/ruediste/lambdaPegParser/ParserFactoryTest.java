@@ -217,7 +217,7 @@ public class ParserFactoryTest {
         }
 
         String expr() {
-            return FirstOf(() -> Precedence(1, this::sum), () -> Precedence(2, this::product), this::value);
+            return FirstOf(() -> PrecedenceGTE(1, this::sum), () -> PrecedenceGTE(2, this::product), this::value);
         }
 
         String product() {
